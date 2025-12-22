@@ -27,6 +27,42 @@ bool _log_levels[EnumValue(DiagnosticLevel::Count)] = {
     true, true, true, false, true,
 };
 
+static FILE* _logFile = nullptr;
+
+bool DiagnosticSetLogFile(const char* path)
+{
+    DiagnosticCloseLogFile();
+
+    if (path == nullptr || path[0] == '\0')
+    {
+        return true;
+    }
+
+    _logFile = fopen(path, "a");
+    if (_logFile == nullptr)
+    {
+        return false;
+    }
+
+    // Write header
+    time_t now = time(nullptr);
+    char timeBuf[64];
+    strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    fprintf(_logFile, "\n=== OpenRCT2 Log Started: %s ===\n\n", timeBuf);
+    fflush(_logFile);
+
+    return true;
+}
+
+void DiagnosticCloseLogFile()
+{
+    if (_logFile != nullptr)
+    {
+        fclose(_logFile);
+        _logFile = nullptr;
+    }
+}
+
 static FILE* diagnostic_get_stream(DiagnosticLevel level)
 {
     switch (level)
@@ -86,6 +122,13 @@ static void DiagnosticPrint(DiagnosticLevel level, const std::string& prefix, co
         Console::WriteLine("%s%s", prefix.c_str(), msg.c_str());
     else
         Console::Error::WriteLine("%s%s", prefix.c_str(), msg.c_str());
+
+    // Also write to log file if enabled
+    if (_logFile != nullptr)
+    {
+        fprintf(_logFile, "%s%s\n", prefix.c_str(), msg.c_str());
+        fflush(_logFile);
+    }
 }
 
 void DiagnosticLog(DiagnosticLevel diagnosticLevel, const char* format, ...)

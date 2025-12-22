@@ -508,6 +508,18 @@ namespace OpenRCT2::Ui::Windows
             });
         }
 
+        void SetSelectedTab(uint8_t tabIndex)
+        {
+            if (tabIndex <= WINDOW_STAFF_LIST_TAB_ENTERTAINERS && tabIndex != _selectedTab)
+            {
+                _selectedTab = tabIndex;
+                RefreshList();
+                invalidate();
+                scrolls[0].contentOffsetY = 0;
+                CancelTools();
+            }
+        }
+
     private:
         /**
          * Hires a new staff member of the given type.
@@ -736,6 +748,19 @@ namespace OpenRCT2::Ui::Windows
         auto* windowMgr = GetWindowManager();
         return windowMgr->FocusOrCreate<StaffListWindow>(
             WindowClass::staffList, kWindowSize, { WindowFlag::higherContrastOnPress, WindowFlag::resizable });
+    }
+
+    WindowBase* StaffListOpenToTab(uint8_t tabIndex)
+    {
+        auto* windowMgr = GetWindowManager();
+        auto* window = windowMgr->FocusOrCreate<StaffListWindow>(
+            WindowClass::staffList, kWindowSize, { WindowFlag::higherContrastOnPress, WindowFlag::resizable });
+        if (window != nullptr && tabIndex <= WINDOW_STAFF_LIST_TAB_ENTERTAINERS)
+        {
+            auto* staffWindow = static_cast<StaffListWindow*>(window);
+            staffWindow->SetSelectedTab(tabIndex);
+        }
+        return window;
     }
 
     void WindowStaffListRefresh()

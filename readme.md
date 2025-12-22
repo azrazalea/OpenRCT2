@@ -66,6 +66,8 @@ If you want to help translate the game to your language, please stop by the Loca
 
 RollerCoaster Tycoon 2 was originally written by Chris Sawyer in x86 assembly and is the sequel to RollerCoaster Tycoon. The engine was based on Transport Tycoon, an older game which also has an equivalent open-source project, [OpenTTD](https://openttd.org). OpenRCT2 attempts to provide everything from RCT2 as well as many improvements and additional features, some of these include support for modern platforms, an improved interface, improved guest and staff AI, more editing tools, increased limits, and cooperative multiplayer. It also re-introduces mechanics from RollerCoaster Tycoon that were not present in RollerCoaster Tycoon 2. Some of those include; mountain tool in-game, the *"have fun"* objective, launched coasters (not passing-through the station) and several buttons on the toolbar.
 
+> **Claude terminal fork note:** This branch bundles new Claude toolbar icons (art by @jsobel) plus two additional fonts, `data/fonts/NotoSansSymbols-Regular.ttf` and `data/fonts/NotoSansSymbols2-Regular.ttf`, to give the in-game terminal full Unicode coverage. Both fonts remain under the SIL Open Font License (see `data/fonts/NotoSansSymbols-LICENSE.txt`).
+
 ---
 
 # 2. Downloading the game (pre-built)

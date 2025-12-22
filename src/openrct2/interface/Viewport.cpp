@@ -533,38 +533,65 @@ namespace OpenRCT2
 
         auto mapCoord = ViewportPosToMapPos(viewportMidPoint, 0, viewport->rotation);
 
-        // Clamp to the map minimum value
-        int32_t at_map_edge = 0;
-        if (mapCoord.x < kMapMinimumXY)
+        // Only apply park boundary clamping during AI agent camera transitions
+        if (window->flags.has(WindowFlag::clampScrollToPark))
         {
-            mapCoord.x = kMapMinimumXY;
-            at_map_edge = 1;
-        }
-        if (mapCoord.y < kMapMinimumXY)
-        {
-            mapCoord.y = kMapMinimumXY;
-            at_map_edge = 1;
-        }
+            // Calculate boundaries accounting for viewport size
+            // Allow ~40 tiles of void at edges for context
+            constexpr int32_t kVoidAllowance = kCoordsXYStep * 40; // 1280 units = 40 tiles
 
-        // Clamp to the map maximum value (scenario specific)
-        auto mapSizeMinus2 = GetMapSizeMinus2();
-        if (mapCoord.x > mapSizeMinus2.x)
-        {
-            mapCoord.x = mapSizeMinus2.x;
-            at_map_edge = 1;
-        }
-        if (mapCoord.y > mapSizeMinus2.y)
-        {
-            mapCoord.y = mapSizeMinus2.y;
-            at_map_edge = 1;
-        }
+            auto mapSizeUnits = GetMapSizeUnits();
 
-        if (at_map_edge)
-        {
-            auto centreLoc = centre2dCoordinates({ mapCoord, 0 }, viewport);
-            if (centreLoc.has_value())
+            // Calculate map-coordinate extent from viewport center to edge
+            // The original formula (viewH/2 + viewW/4) was too aggressive, causing
+            // asymmetric clamping where scrolling towards map origin (top in isometric)
+            // was more restricted than scrolling towards map max (bottom in isometric).
+            // Using a reduced multiplier for more balanced behavior.
+            int32_t viewW = viewport->ViewWidth();
+            int32_t viewH = viewport->ViewHeight();
+            int32_t mapExtent = (viewH / 3) + (viewW / 6);
+
+            // Boundaries that keep viewport edges within allowed area
+            int32_t minBound = -kVoidAllowance + mapExtent;
+            int32_t maxBoundX = mapSizeUnits.x + kVoidAllowance - mapExtent;
+            int32_t maxBoundY = mapSizeUnits.y + kVoidAllowance - mapExtent;
+
+            // Handle small maps / large viewports: ensure min <= max
+            int32_t mapCenter = (mapSizeUnits.x + mapSizeUnits.y) / 4;
+            minBound = std::min(minBound, mapCenter);
+            maxBoundX = std::max(maxBoundX, minBound);
+            maxBoundY = std::max(maxBoundY, minBound);
+
+            // Apply clamping
+            int32_t at_map_edge = 0;
+            if (mapCoord.x < minBound)
             {
-                window->savedViewPos = centreLoc.value();
+                mapCoord.x = minBound;
+                at_map_edge = 1;
+            }
+            if (mapCoord.y < minBound)
+            {
+                mapCoord.y = minBound;
+                at_map_edge = 1;
+            }
+            if (mapCoord.x > maxBoundX)
+            {
+                mapCoord.x = maxBoundX;
+                at_map_edge = 1;
+            }
+            if (mapCoord.y > maxBoundY)
+            {
+                mapCoord.y = maxBoundY;
+                at_map_edge = 1;
+            }
+
+            if (at_map_edge)
+            {
+                auto centreLoc = centre2dCoordinates({ mapCoord, 0 }, viewport);
+                if (centreLoc.has_value())
+                {
+                    window->savedViewPos = centreLoc.value();
+                }
             }
         }
 
@@ -592,6 +619,7 @@ namespace OpenRCT2
             if (!windowCoords.x && !windowCoords.y)
             {
                 window->flags.unset(WindowFlag::scrollingToLocation);
+                window->flags.unset(WindowFlag::clampScrollToPark);
             }
             if (flags & 1)
             {

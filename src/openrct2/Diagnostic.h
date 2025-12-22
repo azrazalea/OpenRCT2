@@ -74,6 +74,17 @@ void DiagnosticLog(DiagnosticLevel diagnosticLevel, const char* format, ...);
 void DiagnosticLogWithLocation(
     DiagnosticLevel diagnosticLevel, const char* file, const char* function, int32_t line, const char* format, ...);
 
+/**
+ * Set a file to write log output to. Pass nullptr to disable file logging.
+ * The file is opened in append mode. Returns true on success.
+ */
+bool DiagnosticSetLogFile(const char* path);
+
+/**
+ * Close the log file if one is open.
+ */
+void DiagnosticCloseLogFile();
+
 #ifdef _MSC_VER
     #define DIAGNOSTIC_LOG_MACRO(level, format, ...)                                                                           \
         DiagnosticLogWithLocation(level, __FILE__, __FUNCTION__, __LINE__, format, ##__VA_ARGS__)

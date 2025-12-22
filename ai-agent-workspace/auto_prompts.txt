@@ -1,0 +1,18 @@
+# OpenRCT2 Agent Prompts
+# One prompt per line. Lines starting with # are comments.
+# These prompts are sent to Claude in rotation when running in continuous mode.
+
+Reach the park goal. Do not stop working until you have won the game.
+
+Review guest thoughts and address the most pressing needs.
+
+Take a look at the finances, and see if we can make a dent on our loan financing.
+
+Review recent notifications. Prioritize and take action.
+
+Keep the park running at peak performance.
+
+Drive up the park rating.
+
+Bring more guests into the park.
+

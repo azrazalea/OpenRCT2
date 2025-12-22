@@ -81,6 +81,10 @@ else ()
 endif ()
 target_link_platform_libraries(openrct2)
 
+if (OPENRCT2_HAVE_LIBVTERM)
+    target_link_libraries(openrct2 PkgConfig::LIBVTERM)
+endif ()
+
 if (NOT DISABLE_FLAC)
     if (NOT MSVC AND NOT WIN32)
         target_link_libraries(openrct2 PkgConfig::FLAC)
@@ -228,6 +232,7 @@ if(MACOS_BUNDLE)
     file(COPY ${SOURCE_DATA_DIR}/language DESTINATION "${BUNDLE_RESOURCE_DIR}")
     file(COPY ${SOURCE_DATA_DIR}/scenario_patches DESTINATION "${BUNDLE_RESOURCE_DIR}")
     file(COPY ${SOURCE_DATA_DIR}/shaders DESTINATION "${BUNDLE_RESOURCE_DIR}")
+    file(COPY ${SOURCE_DATA_DIR}/fonts DESTINATION "${BUNDLE_RESOURCE_DIR}/data")
 
     # Download objects and sequences
     set(OBJECTS_DIR ${CMAKE_BINARY_DIR}/object)
@@ -273,6 +278,25 @@ if(MACOS_BUNDLE)
         MACOSX_BUNDLE_BUNDLE_NAME ${OUTPUT_NAME}
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/distribution/macos/Info.plist
         RESOURCE "${BUNDLE_RESOURCES}")
+
+    set(MACOS_DEP_RUNTIME_DIR "${ROOT_DIR}/lib/macos/lib")
+    if (EXISTS "${MACOS_DEP_RUNTIME_DIR}")
+        set(MACOS_DEP_RUNTIME_DIR_RESOLVED "${MACOS_DEP_RUNTIME_DIR}")
+    else()
+        set(MACOS_DEP_RUNTIME_DIR_RESOLVED "")
+    endif()
+
+    add_custom_command(TARGET openrct2 POST_BUILD
+        COMMAND "${CMAKE_COMMAND}"
+            -DINPUT_APP=${CMAKE_BINARY_DIR}/${MACOS_APP_NAME}
+            -DSEARCH_PATH="${MACOS_DEP_RUNTIME_DIR_RESOLVED}"
+            -P "${ROOT_DIR}/cmake/MacFixupBundle.cmake"
+        COMMAND /usr/bin/codesign --force --deep --sign -
+            --timestamp=none
+            --entitlements "${ROOT_DIR}/OpenRCT2.entitlements"
+            ${CMAKE_BINARY_DIR}/${MACOS_APP_NAME}
+        COMMENT "Fixing up OpenRCT2.app runtime dependencies"
+        VERBATIM)
 
     install(CODE "
         include(BundleUtilities)

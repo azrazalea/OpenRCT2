@@ -351,6 +351,47 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
+        void EnsurePage(int32_t newPage)
+        {
+            if (newPage < 0 || newPage >= PAGE_COUNT)
+            {
+                return;
+            }
+            if (page == newPage)
+            {
+                return;
+            }
+            page = newPage;
+            currentFrame = 0;
+            if (page != PAGE_RIDES && _windowRideListInformationType > INFORMATION_TYPE_RUNNING_COST)
+            {
+                _windowRideListInformationType = INFORMATION_TYPE_STATUS;
+            }
+            RefreshList();
+        }
+
+        void SetInformationType(InformationType type)
+        {
+            if (type < INFORMATION_TYPE_STATUS || type >= DROPDOWN_LIST_COUNT)
+            {
+                return;
+            }
+            // Non-ride pages don't support all information types
+            if (page != PAGE_RIDES && type > INFORMATION_TYPE_RUNNING_COST)
+            {
+                return;
+            }
+            _windowRideListInformationType = type;
+            listInformationType = type;
+            SortList();
+        }
+
+        void SetSortDescending(bool descending)
+        {
+            _windowListSortDescending = descending;
+            SortList();
+        }
+
         /**
          *
          *  rct2: 0x006B3547
@@ -1169,6 +1210,35 @@ namespace OpenRCT2::Ui::Windows
             window = windowMgr->Create<RideListWindow>(
                 WindowClass::rideList, ScreenCoordsXY(32, 32), kWindowSize,
                 { WindowFlag::higherContrastOnPress, WindowFlag::resizable });
+        }
+        return window;
+    }
+
+    WindowBase* RideListOpenShops()
+    {
+        auto* window = RideListOpen();
+        if (auto* rideList = dynamic_cast<RideListWindow*>(window))
+        {
+            rideList->EnsurePage(PAGE_SHOPS_AND_STALLS);
+        }
+        return window;
+    }
+
+    WindowBase* RideListOpenWithConfig(
+        int32_t pageIndex, std::optional<int32_t> informationType, std::optional<bool> sortDescending)
+    {
+        auto* window = RideListOpen();
+        if (auto* rideList = dynamic_cast<RideListWindow*>(window))
+        {
+            rideList->EnsurePage(pageIndex);
+            if (informationType.has_value())
+            {
+                rideList->SetInformationType(static_cast<InformationType>(*informationType));
+            }
+            if (sortDescending.has_value())
+            {
+                rideList->SetSortDescending(*sortDescending);
+            }
         }
         return window;
     }

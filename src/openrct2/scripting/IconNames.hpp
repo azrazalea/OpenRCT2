@@ -130,6 +130,8 @@ namespace OpenRCT2::Scripting
         { "map_east_pressed", SPR_G2_MAP_EAST_PRESSED },
         { "multiplayer_toolbar", SPR_G2_TOOLBAR_MULTIPLAYER },
         { "multiplayer_toolbar_pressed", SPR_G2_TOOLBAR_MULTIPLAYER_PRESSED },
+        { "agent_toolbar", SPR_G2_TOOLBAR_AGENT },
+        { "agent_toolbar_pressed", SPR_G2_TOOLBAR_AGENT_PRESSED },
         { "multiplayer_sync", SPR_G2_MULTIPLAYER_SYNC },
         { "multiplayer_desync", SPR_G2_MULTIPLAYER_DESYNC },
         { "simulate", SPR_G2_SIMULATE },

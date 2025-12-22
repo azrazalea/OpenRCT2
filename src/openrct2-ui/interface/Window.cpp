@@ -311,6 +311,11 @@ namespace OpenRCT2::Ui
                     if (WindowWheelInput(*w, pixel_scroll))
                         return;
                 }
+
+                if (w->onMouseWheel(widgetIndex, pixel_scroll))
+                {
+                    return;
+                }
             }
         }
     }

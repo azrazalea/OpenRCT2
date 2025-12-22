@@ -1329,6 +1329,16 @@ namespace OpenRCT2::Ui::Windows
         return ParkWindowOpen(WINDOW_PARK_PAGE_GUESTS);
     }
 
+    WindowBase* ParkPriceOpen()
+    {
+        return ParkWindowOpen(WINDOW_PARK_PAGE_PRICE);
+    }
+
+    WindowBase* ParkStatsOpen()
+    {
+        return ParkWindowOpen(WINDOW_PARK_PAGE_STATS);
+    }
+
     /**
      *
      *  rct2: 0x00667E57

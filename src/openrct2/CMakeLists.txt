@@ -1,9 +1,9 @@
-file(GLOB_RECURSE OPENRCT2_CORE_SOURCES "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
-file(GLOB_RECURSE OPENRCT2_CORE_HEADERS "${CMAKE_CURRENT_LIST_DIR}/*.h"
+file(GLOB_RECURSE OPENRCT2_CORE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
+file(GLOB_RECURSE OPENRCT2_CORE_HEADERS CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/*.h"
                                         "${CMAKE_CURRENT_LIST_DIR}/*.hpp")
 
 if (APPLE)
-    file(GLOB_RECURSE OPENRCT2_CORE_MM_SOURCES "${CMAKE_CURRENT_LIST_DIR}/*.mm")
+    file(GLOB_RECURSE OPENRCT2_CORE_MM_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/*.mm")
     set_source_files_properties(${OPENRCT2_CORE_MM_SOURCES} PROPERTIES COMPILE_FLAGS "-x objective-c++ -fmodules")
 endif ()
 
@@ -30,6 +30,8 @@ if (APPLE)
 endif()
 add_library(libopenrct2 ${LIBOPENRCT2_LINKAGE} ${OPENRCT2_CORE_SOURCES} ${OPENRCT2_CORE_MM_SOURCES} ${OPENRCT2_DUKTAPE_SOURCES})
 add_library(OpenRCT2::libopenrct2 ALIAS libopenrct2)
+
+option(OPENRCT2_ALLOW_VTERM_FALLBACK "Allow building the agent terminal without libvterm (ANSI rendering disabled)" OFF)
 
 if (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13")
 	message(WARNING "Buggy GCC 12 detected! Disabling some warnings")
@@ -84,6 +86,26 @@ if (NOT DISABLE_HTTP)
             target_link_libraries(libopenrct2 ${LIBCURL_LIBRARIES})
         endif ()
     endif ()
+endif ()
+
+if (NOT WIN32 AND NOT EMSCRIPTEN)
+    PKG_CHECK_MODULES(LIBVTERM QUIET IMPORTED_TARGET vterm)
+    if (LIBVTERM_FOUND)
+        target_link_libraries(libopenrct2 PkgConfig::LIBVTERM)
+        target_include_directories(libopenrct2 SYSTEM PRIVATE ${LIBVTERM_INCLUDE_DIRS})
+        target_compile_definitions(libopenrct2 PUBLIC OPENRCT2_HAVE_LIBVTERM=1)
+        set(OPENRCT2_HAVE_LIBVTERM 1 CACHE INTERNAL "libvterm availability")
+    elseif (OPENRCT2_ALLOW_VTERM_FALLBACK)
+        message(WARNING "libvterm not found, building agent terminal without ANSI support (OPENRCT2_ALLOW_VTERM_FALLBACK=ON)")
+        target_compile_definitions(libopenrct2 PUBLIC OPENRCT2_HAVE_LIBVTERM=0)
+        set(OPENRCT2_HAVE_LIBVTERM 0 CACHE INTERNAL "libvterm availability")
+    else ()
+        message(FATAL_ERROR
+            "libvterm not found. Install it (e.g. 'brew install libvterm pkg-config') or rerun CMake with -DOPENRCT2_ALLOW_VTERM_FALLBACK=ON to continue without ANSI support.")
+    endif ()
+else ()
+    target_compile_definitions(libopenrct2 PUBLIC OPENRCT2_HAVE_LIBVTERM=0)
+    set(OPENRCT2_HAVE_LIBVTERM 0 CACHE INTERNAL "libvterm availability")
 endif ()
 
 if (NOT DISABLE_TTF)

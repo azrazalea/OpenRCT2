@@ -226,12 +226,14 @@ namespace OpenRCT2
 
         const ObjectRepositoryItem* FindObject(std::string_view identifier) const override final
         {
+            // Try JSON object map first (new-style identifiers like "rct2.ride.merry_go_round")
             auto kvp = _newItemMap.find(identifier);
             if (kvp != _newItemMap.end())
             {
                 return &_items[kvp->second];
             }
-            return nullptr;
+            // Fall back to legacy DAT object map (short identifiers like "MGR1" or "FWH1")
+            return FindObjectLegacy(identifier);
         }
 
         const ObjectRepositoryItem* FindObject(const RCTObjectEntry* objectEntry) const override final

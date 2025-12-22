@@ -303,6 +303,15 @@ namespace OpenRCT2::Ui::Windows
         return window;
     }
 
+    WindowBase* ResearchFundingOpen()
+    {
+        auto* windowMgr = GetWindowManager();
+        auto* window = windowMgr->FocusOrCreate<ResearchWindow>(
+            WindowClass::research, kWindowSizeFunding, WindowFlag::higherContrastOnPress);
+        window->setPage(WINDOW_RESEARCH_PAGE_FUNDING);
+        return window;
+    }
+
     static WidgetIndex GetWidgetIndexOffset(WidgetIndex baseWidgetIndex, WidgetIndex currentPageWidgetIndex)
     {
         // Other windows that reuse the logic here will have different values for the widget enums, but they otherwise align to

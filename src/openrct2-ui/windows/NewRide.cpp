@@ -1122,6 +1122,26 @@ namespace OpenRCT2::Ui::Windows
         return w;
     }
 
+    WindowBase* NewRideOpenShops()
+    {
+        auto w = static_cast<NewRideWindow*>(NewRideOpen());
+        if (w != nullptr)
+        {
+            w->setPage(SHOP_TAB);
+        }
+        return w;
+    }
+
+    WindowBase* NewRideOpenToCategory(uint8_t category)
+    {
+        auto w = static_cast<NewRideWindow*>(NewRideOpen());
+        if (w != nullptr && category < RESEARCH_TAB)
+        {
+            w->setPage(static_cast<NewRideTabId>(category));
+        }
+        return w;
+    }
+
     /**
      *
      *  rct2: 0x006B3EBA

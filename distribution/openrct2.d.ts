@@ -4965,7 +4965,7 @@ declare global {
         "map_east" | "map_east_pressed" | "map_gen_land" | "map_gen_noise" | "map_gen_trees" | "map_north" | "map_north_pressed" |
         "map_south" | "map_south_pressed" | "map_west" | "map_west_pressed" | "mechanic" | "mirror_arrow" |
         "mountain_tool_even" | "mountain_tool_odd" | "multiplayer" | "multiplayer_desync" | "multiplayer_sync" |
-        "multiplayer_toolbar" | "multiplayer_toolbar_pressed" | "music" | "mute" | "mute_pressed" | "news_messages" |
+        "multiplayer_toolbar" | "multiplayer_toolbar_pressed" | "claude_toolbar" | "claude_toolbar_pressed" | "music" | "mute" | "mute_pressed" | "news_messages" |
         "new_ride" | "next" | "no_entry" | "open" | "paintbrush" | "palette_invisible" | "palette_invisible_pressed" | "park" |
         "paste" | "path_railings" | "path_surfaces" | "paths" | "patrol" | "pause" | "pickup" | "placeholder" | "previous" |
         "question" | "rct1_close_off" | "rct1_close_off_pressed" | "rct1_close_on" | "rct1_close_on_pressed" | "rct1_open_off" |

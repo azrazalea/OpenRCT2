@@ -90,6 +90,7 @@ namespace OpenRCT2::Ui::Windows
         WIDX_FINANCES,
         WIDX_RESEARCH,
         WIDX_NEWS,
+        WIDX_AGENT,
         WIDX_NETWORK,
         WIDX_CHAT,
 
@@ -227,6 +228,7 @@ namespace OpenRCT2::Ui::Windows
         WIDX_STAFF,
         WIDX_GUESTS,
         WIDX_NEWS,
+        WIDX_AGENT,
     };
 
     static constexpr size_t _totalToolbarElements = kWidgetOrderLeftGroup.size() + kWidgetOrderRightGroup.size();
@@ -270,6 +272,7 @@ namespace OpenRCT2::Ui::Windows
         makeRemapWidget({ 30, 0}, {30, kTopToolbarHeight + 1}, WidgetType::trnBtn, WindowColour::quaternary, SPR_TAB_TOOLBAR,            STR_SCENARIO_OPTIONS_FINANCIAL_TIP), // Finances
         makeRemapWidget({ 30, 0}, {30, kTopToolbarHeight + 1}, WidgetType::trnBtn, WindowColour::quaternary, SPR_TAB_TOOLBAR,            STR_FINANCES_RESEARCH_TIP         ), // Research
         makeRemapWidget({ 30, 0}, {30, kTopToolbarHeight + 1}, WidgetType::trnBtn, WindowColour::quaternary, SPR_TAB_TOOLBAR,            STR_SHOW_RECENT_MESSAGES_TIP      ), // News
+        makeRemapWidget({ 30, 0}, {30, kTopToolbarHeight + 1}, WidgetType::trnBtn, WindowColour::quaternary, SPR_G2_TOOLBAR_AGENT,       STR_AGENT_TERMINAL_TIP            ), // Agent terminal
         makeRemapWidget({ 30, 0}, {30, kTopToolbarHeight + 1}, WidgetType::trnBtn, WindowColour::primary   , SPR_G2_TOOLBAR_MULTIPLAYER, STR_SHOW_MULTIPLAYER_STATUS_TIP   ), // Network
         makeRemapWidget({ 30, 0}, {30, kTopToolbarHeight + 1}, WidgetType::trnBtn, WindowColour::primary   , SPR_TAB_TOOLBAR,            STR_TOOLBAR_CHAT_TIP              ), // Chat
         makeWidget     ({  0, 0}, {10,                     1}, WidgetType::empty,  WindowColour::primary                                                                   )  // Artificial widget separator
@@ -862,6 +865,9 @@ namespace OpenRCT2::Ui::Windows
                 case WIDX_NEWS:
                     ContextOpenWindow(WindowClass::recentNews);
                     break;
+                case WIDX_AGENT:
+                    ContextOpenWindow(WindowClass::aiAgentTerminal);
+                    break;
                 case WIDX_MUTE:
                     OpenRCT2::Audio::ToggleAllSounds();
                     break;
@@ -1112,6 +1118,7 @@ namespace OpenRCT2::Ui::Windows
             widgets[WIDX_CHEATS].type = WidgetType::trnBtn;
             widgets[WIDX_DEBUG].type = Config::Get().general.debuggingTools ? WidgetType::trnBtn : WidgetType::empty;
             widgets[WIDX_NEWS].type = WidgetType::trnBtn;
+            widgets[WIDX_AGENT].type = WidgetType::trnBtn;
             widgets[WIDX_NETWORK].type = WidgetType::trnBtn;
         }
 

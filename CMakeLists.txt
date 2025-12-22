@@ -395,6 +395,7 @@ include("${ROOT_DIR}/src/openrct2-cli/CMakeLists.txt" NO_POLICY_SCOPE)
 if(NOT DISABLE_GUI)
     include("${ROOT_DIR}/src/openrct2-ui/CMakeLists.txt" NO_POLICY_SCOPE)
 endif()
+add_subdirectory("rctctl")
 
 # graphics files (g2.dat and font.dat) 
 if (NOT CMAKE_CROSSCOMPILING)
@@ -423,11 +424,53 @@ else ()
     message("Skipping graphics generation in cross-compile")
 endif ()
 
-# Include tests
+# Always enable CTest so custom harnesses can register tests even without WITH_TESTS.
+enable_testing()
+
+# Include the upstream gtest suite only when explicitly requested.
 if (WITH_TESTS)
-    enable_testing()
     add_subdirectory("test/tests")
 endif ()
+
+# CLI validation tests (fast, no game required)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(
+    NAME rctctl_validation
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/test/scenarios/test_cli_validation.py --rctctl ${CMAKE_BINARY_DIR}/rctctl/rctctl
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Scenario integration tests (headless OpenRCT2 + rctctl)
+add_test(
+    NAME agent_scenarios
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/test/scenarios/run_scenarios.py
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
+
+# Convenience target so we can build everything the agent needs (game + CLI + assets) with one command.
+add_custom_target(agent_bundle)
+add_dependencies(agent_bundle rctctl)
+if (TARGET openrct2)
+    add_dependencies(agent_bundle openrct2)
+endif()
+if (TARGET openrct2-cli)
+    add_dependencies(agent_bundle openrct2-cli)
+endif()
+if (TARGET graphics)
+    add_dependencies(agent_bundle graphics)
+endif()
+
+# On macOS, ensure the bundle is always properly signed after agent_bundle builds.
+# This guards against signature invalidation when parallel sessions rebuild parts of the project.
+if (APPLE AND MACOS_BUNDLE)
+    add_custom_command(TARGET agent_bundle POST_BUILD
+        COMMAND /usr/bin/codesign --force --deep --sign -
+            --timestamp=none
+            --entitlements "${ROOT_DIR}/OpenRCT2.entitlements"
+            ${CMAKE_BINARY_DIR}/OpenRCT2.app
+        COMMENT "Re-signing OpenRCT2.app bundle"
+        VERBATIM)
+endif()
 
 # macOS bundle "install" is handled in src/openrct2-ui/CMakeLists.txt
 # This is because the openrct2 target is modified (and that is where that target is defined)

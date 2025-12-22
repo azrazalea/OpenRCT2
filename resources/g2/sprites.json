@@ -855,5 +855,11 @@
         "path": "tool/path_drag_tool.png",
         "x": 1,
         "y": 2
+    },
+    {
+        "path": "icons/claude_toolbar.png"
+    },
+    {
+        "path": "icons/claude_toolbar_pressed.png"
     }
 ]

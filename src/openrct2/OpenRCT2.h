@@ -49,6 +49,7 @@ extern bool gOpenRCT2ShowChangelog;
 extern bool gOpenRCT2SilentBreakpad;
 extern u8string gSilentRecordingName;
 extern bool gSilentReplays;
+extern int32_t gJsonRpcServerPort;
 
 #ifndef DISABLE_NETWORK
 namespace OpenRCT2::Network

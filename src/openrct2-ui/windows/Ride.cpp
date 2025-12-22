@@ -40,6 +40,8 @@
 #include <openrct2/audio/Audio.h>
 #include <openrct2/config/Config.h>
 #include <openrct2/core/String.hpp>
+#include <openrct2/core/String.hpp>
+#include <openrct2/core/String.hpp>
 #include <openrct2/core/UnitConversion.h>
 #include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
@@ -6937,7 +6939,7 @@ namespace OpenRCT2::Ui::Windows
      *
      *  rct2: 0x006ACC28
      */
-    WindowBase* RideMainOpen(const Ride& ride)
+WindowBase* RideMainOpen(const Ride& ride)
     {
         if (ride.type >= RIDE_TYPE_COUNT)
         {
@@ -6968,6 +6970,54 @@ namespace OpenRCT2::Ui::Windows
 
         w->onViewportRotate();
         return w;
+    }
+
+    static int32_t RideWindowPageFromName(std::string_view tabName)
+    {
+        auto normalized = String::toUpper(tabName);
+        if (normalized == "MAIN")
+            return WINDOW_RIDE_PAGE_MAIN;
+        if (normalized == "VEHICLE")
+            return WINDOW_RIDE_PAGE_VEHICLE;
+        if (normalized == "OPERATING")
+            return WINDOW_RIDE_PAGE_OPERATING;
+        if (normalized == "MAINTENANCE")
+            return WINDOW_RIDE_PAGE_MAINTENANCE;
+        if (normalized == "COLOUR" || normalized == "COLOR")
+            return WINDOW_RIDE_PAGE_COLOUR;
+        if (normalized == "MUSIC")
+            return WINDOW_RIDE_PAGE_MUSIC;
+        if (normalized == "MEASUREMENTS")
+            return WINDOW_RIDE_PAGE_MEASUREMENTS;
+        if (normalized == "GRAPHS")
+            return WINDOW_RIDE_PAGE_GRAPHS;
+        if (normalized == "INCOME")
+            return WINDOW_RIDE_PAGE_INCOME;
+        if (normalized == "CUSTOMER" || normalized == "CUSTOMERS")
+            return WINDOW_RIDE_PAGE_CUSTOMER;
+        return -1;
+    }
+
+    bool RideWindowSetPageByName(RideId rideId, std::string_view tabName)
+    {
+        auto* ride = GetRide(rideId);
+        if (ride == nullptr)
+        {
+            return false;
+        }
+        auto* window = RideMainOpen(*ride);
+        if (window == nullptr)
+        {
+            return false;
+        }
+        auto* rideWindow = static_cast<RideWindow*>(window);
+        const auto page = RideWindowPageFromName(tabName);
+        if (page >= 0 && page < WINDOW_RIDE_PAGE_COUNT)
+        {
+            rideWindow->setPage(page);
+            return true;
+        }
+        return false;
     }
 
     /**

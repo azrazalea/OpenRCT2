@@ -27,6 +27,7 @@
     #include "../interface/InteractiveConsole.h"
     #include "../platform/Platform.h"
     #include "Duktape.hpp"
+    #include "JsonRpcServer.h"
     #include "bindings/entity/ScBalloon.hpp"
     #include "bindings/entity/ScEntity.hpp"
     #include "bindings/entity/ScGuest.hpp"
@@ -396,7 +397,10 @@ ScriptEngine::ScriptEngine(InteractiveConsole& console, IPlatformEnvironment& en
     , _env(env)
     , _hookEngine(*this)
 {
+    _jsonRpcServer = std::make_unique<JsonRpcServer>(*this);
 }
+
+ScriptEngine::~ScriptEngine() = default;
 
 void ScriptEngine::Initialise()
 {
@@ -483,6 +487,11 @@ void ScriptEngine::Initialise()
 
     LoadSharedStorage();
     ClearParkStorage();
+
+    if (_jsonRpcServer)
+    {
+        _jsonRpcServer->Start();
+    }
 }
 
 class ConstantBuilder
@@ -930,6 +939,11 @@ void ScriptEngine::Tick()
     }
 
     PROFILED_FUNCTION();
+
+    if (_jsonRpcServer)
+    {
+        _jsonRpcServer->Tick();
+    }
 
     CheckAndStartPlugins();
     UpdateIntervals();

@@ -616,22 +616,34 @@ static void Loc6A6D7E(
                     }
                     break;
                 case TileElementType::Entrance:
-                    if (initialTileElementPos.z == tileElement->GetBaseZ())
+                {
+                    auto* entranceElement = tileElement->AsEntrance();
+                    bool zMatch = (initialTileElementPos.z == tileElement->GetBaseZ());
+                    Direction relDir = DirectionReverse(direction - tileElement->GetDirection());
+                    bool dirMatch = entrance_has_direction(*entranceElement, relDir);
+
+                    LOG_VERBOSE(
+                        "[Footpath] Entrance check at (%d,%d): pathZ=%d entranceZ=%d zMatch=%d "
+                        "direction=%d entranceDir=%d relDir=%d dirMatch=%d entranceType=%d rideId=%u",
+                        targetPos.x / kCoordsXYStep, targetPos.y / kCoordsXYStep, initialTileElementPos.z,
+                        tileElement->GetBaseZ(), zMatch, direction, tileElement->GetDirection(), relDir, dirMatch,
+                        entranceElement->GetEntranceType(), entranceElement->GetRideIndex().ToUnderlying());
+
+                    if (zMatch)
                     {
-                        if (entrance_has_direction(
-                                *(tileElement->AsEntrance()), DirectionReverse(direction - tileElement->GetDirection())))
+                        if (dirMatch)
                         {
                             if (query)
                             {
                                 FootpathNeighbourListPush(
-                                    neighbourList, 8, direction, tileElement->AsEntrance()->GetRideIndex(),
-                                    tileElement->AsEntrance()->GetStationIndex());
+                                    neighbourList, 8, direction, entranceElement->GetRideIndex(),
+                                    entranceElement->GetStationIndex());
                             }
                             else
                             {
-                                if (tileElement->AsEntrance()->GetEntranceType() != ENTRANCE_TYPE_PARK_ENTRANCE)
+                                if (entranceElement->GetEntranceType() != ENTRANCE_TYPE_PARK_ENTRANCE)
                                 {
-                                    FootpathQueueChainPush(tileElement->AsEntrance()->GetRideIndex());
+                                    FootpathQueueChainPush(entranceElement->GetRideIndex());
                                 }
                             }
                             Loc6A6FD2(initialTileElementPos, direction, initialTileElement, query);
@@ -639,6 +651,7 @@ static void Loc6A6D7E(
                         }
                     }
                     break;
+                }
                 default:
                     break;
             }

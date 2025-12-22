@@ -29,6 +29,7 @@
 
     #include <chrono>
     #include <cstring>
+    #include <exception>
     #include <iterator>
     #include <memory>
     #include <random>
@@ -58,6 +59,7 @@ namespace OpenRCT2::Network
         std::unique_ptr<IUdpSocket> _lanListener;
         std::shared_future<void> _currentRequest;
         uint32_t _lastListenTime{};
+        bool _lanDisabled = false;
 
         AdvertiseStatus _status = AdvertiseStatus::unregistered;
 
@@ -115,12 +117,28 @@ namespace OpenRCT2::Network
     private:
         void UpdateLAN()
         {
+            if (_lanDisabled)
+            {
+                return;
+            }
             auto ticks = Platform::GetTicks();
             if (ticks > _lastListenTime + 500)
             {
                 if (_lanListener->GetStatus() != SocketStatus::listening)
                 {
-                    _lanListener->Listen(kLanBroadcastPort);
+                    try
+                    {
+                        _lanListener->Listen(kLanBroadcastPort);
+                    }
+                    catch (const std::exception& ex)
+                    {
+                        _lanDisabled = true;
+                        Console::Error::WriteLine(
+                            "Unable to bind LAN broadcast port %u (%s); disabling LAN discovery.",
+                            kLanBroadcastPort,
+                            ex.what());
+                        return;
+                    }
                 }
                 else
                 {

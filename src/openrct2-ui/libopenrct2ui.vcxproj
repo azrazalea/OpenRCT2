@@ -166,6 +166,7 @@
     <ClCompile Include="windows\AssetPacks.cpp" />
     <ClCompile Include="windows\Banner.cpp" />
     <ClCompile Include="windows\Changelog.cpp" />
+    <ClCompile Include="windows\AIAgentTerminal.cpp" />
     <ClCompile Include="windows\Cheats.cpp" />
     <ClCompile Include="windows\ClearScenery.cpp" />
     <ClCompile Include="windows\CustomCurrency.cpp" />

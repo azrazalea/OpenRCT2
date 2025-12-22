@@ -162,6 +162,8 @@ public:
                 return AssetPacksOpen();
             case WindowClass::editorParkEntrance:
                 return EditorParkEntranceOpen();
+            case WindowClass::aiAgentTerminal:
+                return AIAgentTerminalOpen();
             default:
                 Console::Error::WriteLine("Unhandled window class (%d)", wc);
                 return nullptr;
@@ -333,6 +335,12 @@ public:
                 WindowNewRideFocus(rideItem);
 
                 return w;
+            }
+            case INTENT_ACTION_NEW_RIDE_OF_CATEGORY:
+            {
+                // Open ride list window to specific category tab
+                auto category = static_cast<uint8_t>(intent->GetUIntExtra(INTENT_EXTRA_PAGE));
+                return NewRideOpenToCategory(category);
             }
             case INTENT_ACTION_NEW_SCENERY:
             {

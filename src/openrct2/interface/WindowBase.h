@@ -177,6 +177,10 @@ namespace OpenRCT2
         virtual void onMouseUp(WidgetIndex widgetIndex)
         {
         }
+        virtual bool onMouseWheel(WidgetIndex, int32_t)
+        {
+            return false;
+        }
         virtual void onDropdown(WidgetIndex widgetIndex, int32_t selectedIndex)
         {
         }

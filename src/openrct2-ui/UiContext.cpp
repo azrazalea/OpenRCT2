@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <memory>
+#include <openrct2-ui/aiagent/AIAgentFollowController.h>
 #include <openrct2-ui/input/InputManager.h>
 #include <openrct2-ui/input/MouseInput.h>
 #include <openrct2-ui/interface/Window.h>
@@ -36,6 +37,7 @@
 #include <openrct2/Version.h>
 #include <openrct2/audio/AudioContext.h>
 #include <openrct2/audio/AudioMixer.h>
+#include <openrct2/aiagent/AIAgentFollowApi.h>
 #include <openrct2/config/Config.h>
 #include <openrct2/core/String.hpp>
 #include <openrct2/drawing/Drawing.h>
@@ -58,6 +60,8 @@ using namespace OpenRCT2;
 using namespace OpenRCT2::Drawing;
 using namespace OpenRCT2::Scripting;
 using namespace OpenRCT2::Ui;
+
+using UiAIAgentFollowController = OpenRCT2::Ui::AIAgent::AIAgentFollowController;
 
 #ifdef __MACOSX__
     // macOS uses COMMAND rather than CTRL for many keyboard shortcuts
@@ -98,6 +102,7 @@ private:
 
     InGameConsole _inGameConsole;
     std::unique_ptr<ITitleSequencePlayer> _titleSequencePlayer;
+    std::unique_ptr<UiAIAgentFollowController> _aiAgentFollowController;
 
 public:
     InGameConsole& GetInGameConsole()
@@ -127,6 +132,7 @@ public:
         }
         _cursorRepository.LoadCursors();
         _shortcutManager.loadUserBindings();
+        _aiAgentFollowController = std::make_unique<UiAIAgentFollowController>();
     }
 
     ~UiContext() override
@@ -150,6 +156,12 @@ public:
         _windowManager->UpdateMapTooltip();
 
         WindowDispatchUpdateAll();
+
+        if (_aiAgentFollowController)
+        {
+            _aiAgentFollowController->SetEnabled(OpenRCT2::AIAgent::IsFollowEnabled());
+            _aiAgentFollowController->Tick();
+        }
     }
 
     void Draw(RenderTarget& rt) override
@@ -1043,7 +1055,10 @@ private:
     {
         InputEvent ie;
         ie.deviceKind = InputDeviceKind::keyboard;
-        ie.modifiers = e.key.keysym.mod;
+        // Some accessibility / dictation tools (e.g. Wispr Flow) synthesize Command/Control-paste by
+        // toggling the global modifier state but omit the flag on the per-key SDL event. Merge both to
+        // preserve the intended shortcut semantics.
+        ie.modifiers = static_cast<uint16_t>(e.key.keysym.mod | SDL_GetModState());
         ie.button = e.key.keysym.sym;
 
         // Handle dead keys

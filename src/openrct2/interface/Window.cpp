@@ -248,7 +248,7 @@ static constexpr float kWindowScrollLocations[][2] = {
         WindowVisitEach([&window](WindowBase* w) {
             if (w == &window)
                 return;
-            if (w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront))
+            if (w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront, WindowFlag::noPush))
                 return;
             if (w->windowPos.x >= window.windowPos.x + window.width)
                 return;
@@ -281,7 +281,7 @@ static constexpr float kWindowScrollLocations[][2] = {
             if (&w1 == w2)
                 return;
             // ?
-            if (w2->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront))
+            if (w2->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront, WindowFlag::noPush))
                 return;
             // Check if w2 intersects with w1
             if (w2->windowPos.x > (w1.windowPos.x + w1.width) || w2->windowPos.x + w2->width < w1.windowPos.x)
@@ -412,6 +412,54 @@ static constexpr float kWindowScrollLocations[][2] = {
                 w.savedViewPos = screenCoords
                     - ScreenCoordsXY{ static_cast<int32_t>(w.viewport->ViewWidth() * kWindowScrollLocations[i][0]),
                                       static_cast<int32_t>(w.viewport->ViewHeight() * kWindowScrollLocations[i][1]) };
+                w.flags.set(WindowFlag::scrollingToLocation);
+            }
+        }
+    }
+
+    /**
+     * Scrolls window viewport to specified coordinates with explicit bias fractions.
+     * @param w Window with viewport
+     * @param coords 3D world coordinates to scroll to
+     * @param xBias Horizontal bias (0.0 = left edge, 0.5 = center, 1.0 = right edge)
+     * @param yBias Vertical bias (0.0 = top edge, 0.5 = center, 1.0 = bottom edge)
+     */
+    void WindowScrollToLocationWithBias(WindowBase& w, const CoordsXYZ& coords, float xBias, float yBias)
+    {
+        WindowUnfollowSprite(w);
+
+        if (w.viewport == nullptr)
+        {
+            return;
+        }
+
+        int16_t height = TileElementHeight(coords);
+        if (coords.z < height - 16)
+        {
+            if (!(w.viewport->flags & VIEWPORT_FLAG_UNDERGROUND_INSIDE))
+            {
+                w.viewport->flags |= VIEWPORT_FLAG_UNDERGROUND_INSIDE;
+                w.invalidate();
+            }
+        }
+        else
+        {
+            if (w.viewport->flags & VIEWPORT_FLAG_UNDERGROUND_INSIDE)
+            {
+                w.viewport->flags &= ~VIEWPORT_FLAG_UNDERGROUND_INSIDE;
+                w.invalidate();
+            }
+        }
+
+        auto screenCoords = Translate3DTo2DWithZ(w.viewport->rotation, coords);
+
+        if (w.viewportTargetSprite.IsNull())
+        {
+            if (!(w.flags.has(WindowFlag::noScrolling)))
+            {
+                w.savedViewPos = screenCoords
+                    - ScreenCoordsXY{ static_cast<int32_t>(w.viewport->ViewWidth() * xBias),
+                                      static_cast<int32_t>(w.viewport->ViewHeight() * yBias) };
                 w.flags.set(WindowFlag::scrollingToLocation);
             }
         }

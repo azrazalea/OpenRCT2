@@ -381,6 +381,11 @@ void InputManager::process(const InputEvent& e)
                 return;
             }
 
+            if (OpenRCT2::Ui::Windows::AIAgentTerminalHandleInput(e))
+            {
+                return;
+            }
+
             if (OpenRCT2::Ui::Windows::IsUsingWidgetTextBox())
             {
                 return;

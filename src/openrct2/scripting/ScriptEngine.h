@@ -137,6 +137,8 @@ namespace OpenRCT2::Scripting
         bool Deleted{};
     };
 
+    class JsonRpcServer;
+
     class ScriptEngine
     {
     private:
@@ -174,12 +176,14 @@ namespace OpenRCT2::Scripting
         };
 
         std::unordered_map<std::string, CustomActionInfo> _customActions;
-    #ifndef DISABLE_NETWORK
+#ifndef DISABLE_NETWORK
         std::list<std::shared_ptr<ScSocketBase>> _sockets;
-    #endif
+#endif
+        std::unique_ptr<JsonRpcServer> _jsonRpcServer;
 
     public:
         ScriptEngine(InteractiveConsole& console, IPlatformEnvironment& env);
+        ~ScriptEngine();
         ScriptEngine(ScriptEngine&) = delete;
 
         duk_context* GetContext()

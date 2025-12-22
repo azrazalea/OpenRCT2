@@ -91,6 +91,16 @@ namespace OpenRCT2
         higherContrastOnPress,
         noTitleBar,
         noSnapping,
+        /**
+         * When set, viewport scrolling is clamped to park boundaries.
+         * Used by AI agent camera transitions to keep view inside the park.
+         */
+        clampScrollToPark,
+        /**
+         * Prevents this window from being pushed by other windows when they open.
+         * Useful for windows that should maintain their position (e.g., Agent Terminal).
+         */
+        noPush,
 
         // *ONLY* create only flags below
         autoPosition,
@@ -309,6 +319,7 @@ namespace OpenRCT2
     WindowBase* WindowGetMain();
 
     void WindowScrollToLocation(WindowBase& w, const CoordsXYZ& coords);
+    void WindowScrollToLocationWithBias(WindowBase& w, const CoordsXYZ& coords, float xBias, float yBias);
     void WindowCheckAllValidZoom();
     void WindowZoomSet(WindowBase& w, ZoomLevel zoomLevel, bool atCursor);
 

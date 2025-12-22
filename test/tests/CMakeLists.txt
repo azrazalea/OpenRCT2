@@ -26,6 +26,7 @@ set(test_files
    "${CMAKE_CURRENT_SOURCE_DIR}/PlayTests.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/ReplayTests.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/RideRatings.cpp"
+   "${CMAKE_CURRENT_SOURCE_DIR}/RctctlRendererTests.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/S6ImportExportTests.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/SawyerCodingTest.cpp"
    "${CMAKE_CURRENT_SOURCE_DIR}/ScenarioPatcherTests.cpp"
@@ -40,9 +41,16 @@ add_executable(OpenRCT2Tests ${test_files})
 add_executable(OpenRCT2::OpenRCT2Tests ALIAS OpenRCT2Tests)
 
 target_link_libraries(OpenRCT2Tests GTest::gtest GTest::gtest_main libopenrct2)
-target_include_directories(OpenRCT2Tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../src")
+target_include_directories(OpenRCT2Tests PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../src"
+    "${PROJECT_SOURCE_DIR}/rctctl/include")
+target_sources(OpenRCT2Tests PRIVATE
+    "${PROJECT_SOURCE_DIR}/rctctl/src/renderers/park.cpp"
+    "${PROJECT_SOURCE_DIR}/rctctl/src/renderers/text.cpp"
+    "${PROJECT_SOURCE_DIR}/rctctl/src/renderers/context.cpp"
+    "${PROJECT_SOURCE_DIR}/rctctl/src/util/format.cpp"
+    "${PROJECT_SOURCE_DIR}/rctctl/src/util/string_utils.cpp")
 set_target_properties(OpenRCT2Tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 gtest_discover_tests(OpenRCT2Tests
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     DISCOVERY_MODE PRE_TEST)
-

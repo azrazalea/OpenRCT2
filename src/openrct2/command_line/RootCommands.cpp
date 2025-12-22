@@ -8,6 +8,7 @@
  *****************************************************************************/
 
 #include "../Context.h"
+#include "../Diagnostic.h"
 #include "../OpenRCT2.h"
 #include "../PlatformEnvironment.h"
 #include "../Version.h"
@@ -48,6 +49,7 @@ namespace OpenRCT2
     static uint32_t _port = 0;
     static char* _address = nullptr;
 #endif
+    static uint32_t _jsonRpcPort = 0;
 
     static bool _help = false;
     static bool _version = false;
@@ -63,6 +65,7 @@ namespace OpenRCT2
     static u8string _rct1DataPath = {};
     static u8string _rct2DataPath = {};
     static bool _silentBreakpad = false;
+    static u8string _logFilePath = {};
 
     // clang-format off
     static constexpr CommandLineOptionDefinition kStandardOptions[]
@@ -75,15 +78,17 @@ namespace OpenRCT2
         { CMDLINE_TYPE_SWITCH,  &_verbose,          kNAC, "verbose",            "log verbose messages"                                       },
         { CMDLINE_TYPE_SWITCH,  &_headless,         kNAC, "headless",           "run " OPENRCT2_NAME " headless" IMPLIES_SILENT_BREAKPAD     },
         { CMDLINE_TYPE_SWITCH,  &_silentReplays,    kNAC, "silent-replays",     "use unobtrusive replays"                                    },
-    #ifndef DISABLE_NETWORK
+#ifndef DISABLE_NETWORK
         { CMDLINE_TYPE_INTEGER, &_port,             kNAC, "port",               "port to use for hosting or joining a server"                },
         { CMDLINE_TYPE_STRING,  &_address,          kNAC, "address",            "address to listen on when hosting a server"                 },
-    #endif
+#endif
+        { CMDLINE_TYPE_INTEGER, &_jsonRpcPort,      kNAC, "jsonrpc-port",       "port for the JSON-RPC control server (default 9876)" },
         { CMDLINE_TYPE_STRING,  &_password,         kNAC, "password",           "password needed to join the server"                         },
         { CMDLINE_TYPE_STRING,  &_userDataPath,     kNAC, "user-data-path",     "path to the user data directory (containing config.ini)"    },
         { CMDLINE_TYPE_STRING,  &_openrct2DataPath, kNAC, "openrct2-data-path", "path to the OpenRCT2 data directory (containing languages)" },
         { CMDLINE_TYPE_STRING,  &_rct1DataPath,     kNAC, "rct1-data-path",     "path to the RollerCoaster Tycoon 1 data directory (containing data/csg1.dat)" },
         { CMDLINE_TYPE_STRING,  &_rct2DataPath,     kNAC, "rct2-data-path",     "path to the RollerCoaster Tycoon 2 data directory (containing data/g1.dat)" },
+        { CMDLINE_TYPE_STRING,  &_logFilePath,      kNAC, "log-file",           "write log output to file (use with --verbose for full logs)" },
     #ifdef USE_BREAKPAD
         { CMDLINE_TYPE_SWITCH,  &_silentBreakpad,  kNAC, "silent-breakpad",   "make breakpad crash reporting silent"                       },
     #endif // USE_BREAKPAD
@@ -182,6 +187,19 @@ namespace OpenRCT2
                 PrintLaunchInformation();
             }
 
+            if (!_logFilePath.empty())
+            {
+                auto absPath = Path::GetAbsolute(_logFilePath);
+                if (!DiagnosticSetLogFile(absPath.c_str()))
+                {
+                    Console::Error::WriteLine("Failed to open log file: %s", absPath.c_str());
+                }
+                else
+                {
+                    Console::WriteLine("Logging to: %s", absPath.c_str());
+                }
+            }
+
             if (_version)
             {
                 if (!_verbose)
@@ -231,6 +249,8 @@ namespace OpenRCT2
         {
             gSilentReplays = _silentReplays;
         }
+
+        gJsonRpcServerPort = static_cast<int32_t>(_jsonRpcPort);
 
         return result;
     }

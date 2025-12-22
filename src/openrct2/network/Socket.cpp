@@ -216,6 +216,25 @@ namespace OpenRCT2::Network
     #endif
         }
 
+        // Set close-on-exec flag to prevent child processes from inheriting the socket.
+        // This is critical for the AI Agent terminal: without it, forked processes (like claude)
+        // inherit the JsonRpcServer's listening socket, and if the parent exits, the orphaned
+        // child keeps the port bound, preventing new game instances from starting the server.
+        static bool SetCloseOnExec([[maybe_unused]] SOCKET socket)
+        {
+    #ifdef _WIN32
+            // Windows handles don't inherit by default unless explicitly requested
+            return true;
+    #else
+            int32_t flags = fcntl(socket, F_GETFD, 0);
+            if (flags == -1)
+            {
+                return false;
+            }
+            return fcntl(socket, F_SETFD, flags | FD_CLOEXEC) != -1;
+    #endif
+        }
+
         static bool SetOption(SOCKET socket, int32_t a, int32_t b, bool value)
         {
             int32_t ivalue = value ? 1 : 0;
@@ -332,6 +351,9 @@ namespace OpenRCT2::Network
                 throw SocketException("Unable to create socket.");
             }
 
+            // Prevent child processes from inheriting this socket
+            SetCloseOnExec(_socket);
+
             // Turn off IPV6_V6ONLY so we can accept both v4 and v6 connections
             if (!SetOption(_socket, IPPROTO_IPV6, IPV6_V6ONLY, false))
             {
@@ -391,6 +413,9 @@ namespace OpenRCT2::Network
             }
             else
             {
+                // Prevent child processes from inheriting this socket
+                SetCloseOnExec(socket);
+
                 if (!SetNonBlocking(socket, true))
                 {
                     closesocket(socket);
@@ -444,6 +469,9 @@ namespace OpenRCT2::Network
                 {
                     throw SocketException("Unable to create socket.");
                 }
+
+                // Prevent child processes from inheriting this socket
+                SetCloseOnExec(_socket);
 
                 SetNoDelay(true);
                 if (!SetNonBlocking(_socket, true))
@@ -832,6 +860,9 @@ namespace OpenRCT2::Network
             {
                 throw SocketException("Unable to create socket.");
             }
+
+            // Prevent child processes from inheriting this socket
+            SetCloseOnExec(sock);
 
             // Enable send and receiving of broadcast messages
             if (!SetOption(sock, SOL_SOCKET, SO_BROADCAST, true))

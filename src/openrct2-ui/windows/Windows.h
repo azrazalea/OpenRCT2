@@ -15,6 +15,11 @@
 #include <optional>
 #include <string_view>
 
+namespace OpenRCT2::Ui
+{
+    struct InputEvent;
+}
+
 struct OpenRCT2String;
 struct Peep;
 struct Ride;
@@ -60,6 +65,10 @@ namespace OpenRCT2::Ui::Windows
 
     // Cheats
     WindowBase* CheatsOpen();
+
+    // AIAgentTerminal
+    WindowBase* AIAgentTerminalOpen();
+    bool AIAgentTerminalHandleInput(const OpenRCT2::Ui::InputEvent& e);
 
     // ClearScenery
     WindowBase* ClearSceneryOpen();
@@ -170,6 +179,8 @@ namespace OpenRCT2::Ui::Windows
     // NewRide
     WindowBase* NewRideOpen();
     WindowBase* NewRideOpenResearch();
+    WindowBase* NewRideOpenShops();
+    WindowBase* NewRideOpenToCategory(uint8_t category);
     void WindowNewRideInitVars();
     void WindowNewRideFocus(RideSelection rideItem);
 
@@ -198,7 +209,9 @@ namespace OpenRCT2::Ui::Windows
     WindowBase* ParkEntranceOpen();
     WindowBase* ParkGuestsOpen();
     WindowBase* ParkObjectiveOpen();
+    WindowBase* ParkPriceOpen();
     WindowBase* ParkRatingOpen();
+    WindowBase* ParkStatsOpen();
 
     // Player
     WindowBase* PlayerOpen(uint8_t id);
@@ -217,6 +230,7 @@ namespace OpenRCT2::Ui::Windows
 
     // Research
     WindowBase* ResearchOpen();
+    WindowBase* ResearchFundingOpen();
     void WindowResearchDevelopmentMouseUp(WidgetIndex widgetIndex, WidgetIndex baseWidgetIndex);
     void WindowResearchDevelopmentPrepareDraw(WindowBase* w, WidgetIndex baseWidgetIndex);
     void WindowResearchDevelopmentDraw(WindowBase* w, Drawing::RenderTarget& rt, WidgetIndex baseWidgetIndex);
@@ -228,6 +242,7 @@ namespace OpenRCT2::Ui::Windows
 
     // Ride
     WindowBase* RideMainOpen(const Ride& ride);
+    bool RideWindowSetPageByName(RideId rideId, std::string_view tabName);
     WindowBase* RideOpenTrack(TileElement* tileElement);
     WindowBase* RideOpenVehicle(Vehicle* vehicle);
     void WindowRideInvalidateVehicle(const Vehicle& vehicle);
@@ -259,6 +274,9 @@ namespace OpenRCT2::Ui::Windows
 
     // RideList
     WindowBase* RideListOpen();
+    WindowBase* RideListOpenShops();
+    WindowBase* RideListOpenWithConfig(
+        int32_t pageIndex, std::optional<int32_t> informationType, std::optional<bool> sortDescending);
     void WindowRideListRefreshList(WindowBase* w);
 
     // SavePrompt
@@ -306,6 +324,7 @@ namespace OpenRCT2::Ui::Windows
 
     // StaffList
     WindowBase* StaffListOpen();
+    WindowBase* StaffListOpenToTab(uint8_t tabIndex);
     void WindowStaffListRefresh();
 
     // TextInput

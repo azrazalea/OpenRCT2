@@ -248,3 +248,13 @@ STR_6732    :Show a button in the toolbar to rotate the view counterclockwise
 
 STR_6787    :Analog stick deadzone (minimum movement required)
 STR_6789    :Analog stick sensitivity multiplier
+STR_7008    :Agent Terminal
+STR_7009    :Agent Terminal
+STR_8000    :Follow agent's actions
+STR_8001    :Follow Agent: ON
+STR_8002    :Follow Agent: OFF
+STR_8003    :Collapse agent terminal
+STR_8004    :Expand agent terminal
+STR_8005    :Toggle auto-prompt mode
+STR_8006    :Auto-prompt: ON
+STR_8007    :Auto-prompt: OFF

@@ -25,6 +25,7 @@ bool gOpenRCT2NoGraphics = false;
 
 bool gOpenRCT2ShowChangelog;
 bool gOpenRCT2SilentBreakpad;
+int32_t gJsonRpcServerPort = 0;
 
 uint32_t gCurrentDrawCount = 0;
 LegacyScene gLegacyScene;

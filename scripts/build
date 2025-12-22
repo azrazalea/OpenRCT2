@@ -2,6 +2,29 @@
 
 set -e
 
+require_libvterm() {
+    local uname_s
+    uname_s=$(uname)
+    case "$uname_s" in
+        Darwin|Linux)
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists vterm; then
+        return 0
+    fi
+
+    cat >&2 <<'EOF'
+[OpenRCT2] libvterm (and pkg-config) are required for the AI Agent terminal renderer.
+[OpenRCT2] Install them first, e.g. `brew install libvterm pkg-config`, then re-run scripts/build.
+[OpenRCT2] To intentionally build without libvterm, rerun cmake with -DOPENRCT2_ALLOW_VTERM_FALLBACK=ON.
+EOF
+    exit 20
+}
+
 # Ensure we are in root directory
 if [[ $(uname) == "Darwin" ]]; then
     basedir="$(perl -MCwd=abs_path -le 'print abs_path readlink(shift);' `dirname $0`/..)"
@@ -34,6 +57,7 @@ else
     echo -e "\033[0;36mBuilding OpenRCT2...\033[0m"
     mkdir -p bin && cd bin
     export DESTDIR=install
+    require_libvterm
     cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX=/usr "$@"
 
     ninja -k0 all install
