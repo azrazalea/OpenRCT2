@@ -1129,7 +1129,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 int32_t colour2 = RideGetUnusedPresetVehicleColour(shopInfo->entryIndex);
 
                 auto rideCreate = GameActions::RideCreateAction(
-                    shopInfo->rideType, shopInfo->entryIndex, colour1, colour2, gameState.lastEntranceStyle);
+                    shopInfo->rideType, shopInfo->entryIndex, colour1, colour2, gameState.lastEntranceStyle, RideInspection::every10Minutes);
                 auto createQueryResult = GameActions::Query(&rideCreate, gameState);
 
                 json_t payload = json_t::object();
@@ -1179,7 +1179,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             int32_t colour2 = RideGetUnusedPresetVehicleColour(shopInfo->entryIndex);
 
             auto rideCreate = GameActions::RideCreateAction(
-                shopInfo->rideType, shopInfo->entryIndex, colour1, colour2, gameState.lastEntranceStyle);
+                shopInfo->rideType, shopInfo->entryIndex, colour1, colour2, gameState.lastEntranceStyle, RideInspection::every10Minutes);
             auto createResult = GameActions::ExecuteNested(&rideCreate, gameState);
             if (createResult.error != GameActions::Status::ok)
             {

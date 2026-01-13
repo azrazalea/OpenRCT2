@@ -60,6 +60,8 @@
 #include <openrct2/drawing/Text.h>
 #include <openrct2/drawing/TTF.h>
 #include <openrct2/drawing/ColourPalette.h>
+#include <openrct2/drawing/PaletteIndex.h>
+#include <openrct2/drawing/RenderTarget.h>
 #include <openrct2/config/Config.h>
 #include <openrct2/aiagent/AIAgentFollowApi.h>
 #include <openrct2/aiagent/AIAgentPromptBridge.h>
@@ -93,6 +95,8 @@ using OpenRCT2::Terminal::TerminalSnapshot;
 using OpenRCT2::Terminal::BuildAIAgentLaunchPlan;
 using OpenRCT2::Terminal::SessionLogGenerator;
 using OpenRCT2::Ui::InputEvent;
+using OpenRCT2::Drawing::PaletteIndex;
+using OpenRCT2::Drawing::RenderTarget;
 namespace Rect = OpenRCT2::Drawing::Rectangle;
 
 #ifndef TTF_GlyphIsProvided32
@@ -238,7 +242,7 @@ namespace
             // ColourMapA[COLOUR_BLACK].mid_dark, so cells with black backgrounds should too.
             if (colour.r == 0 && colour.g == 0 && colour.b == 0)
             {
-                return ColourMapA[COLOUR_BLACK].mid_dark;
+                return static_cast<uint8_t>(ColourMapA[COLOUR_BLACK].mid_dark);
             }
 
             const uint32_t key = (static_cast<uint32_t>(colour.r) << 16) | (static_cast<uint32_t>(colour.g) << 8)
@@ -250,7 +254,7 @@ namespace
 
             const auto& palette = gPalette;
             uint32_t bestScore = std::numeric_limits<uint32_t>::max();
-            uint8_t bestIndex = ColourMapA[COLOUR_BLACK].mid_dark;
+            uint8_t bestIndex = static_cast<uint8_t>(ColourMapA[COLOUR_BLACK].mid_dark);
             for (uint32_t i = 0; i < OpenRCT2::Drawing::kGamePaletteSize; i++)
             {
                 if (!IsStableIndex(i))
@@ -1435,7 +1439,7 @@ namespace OpenRCT2::Ui::Windows
             int32_t canvasB = windowPos.y + canvasWidget.bottom;
 
             // Get fill color from colour map
-            uint8_t fillColour = ColourMapA[colour.colour].mid_light;
+            PaletteIndex fillColour = ColourMapA[colour.colour].mid_light;
 
             // Draw the 3D frame border (outset style)
             Rect::fillInset(
@@ -2249,7 +2253,7 @@ namespace OpenRCT2::Ui::Windows
         {
             const ScreenCoordsXY underlineStart = cellPos + ScreenCoordsXY{ 0, _cellHeight - 2 };
             const ScreenCoordsXY underlineEnd = underlineStart + ScreenCoordsXY{ cellWidthPx - 1, 1 };
-            Rect::fill(rt, { underlineStart, underlineEnd }, static_cast<int32_t>(foreground));
+            Rect::fill(rt, { underlineStart, underlineEnd }, static_cast<PaletteIndex>(foreground));
         }
 #else
         (void)rt;
@@ -2323,7 +2327,7 @@ namespace OpenRCT2::Ui::Windows
         _offscreenHeight = bufHeight;
 
         // Clear to background color
-        std::fill_n(_offscreenBuffer.get(), bufferSize, ColourMapA[COLOUR_BLACK].mid_dark);
+        std::fill_n(_offscreenBuffer.get(), bufferSize, static_cast<uint8_t>(ColourMapA[COLOUR_BLACK].mid_dark));
     }
 
     void AIAgentTerminalWindow::BlitOffscreenToScreen(
@@ -2621,7 +2625,7 @@ namespace OpenRCT2::Ui::Windows
         ScreenCoordsXY cellPos = rowOrigin + ScreenCoordsXY{ col * _cellWidth, 0 };
         ScreenCoordsXY cellEnd = cellPos + ScreenCoordsXY{ cellWidthPx - 1, _cellHeight - 1 };
         const auto background = TerminalPaletteMapper::Instance().Map(cell.backgroundRgb);
-        Rect::fill(rt, { cellPos, cellEnd }, static_cast<int32_t>(background));
+        Rect::fill(rt, { cellPos, cellEnd }, static_cast<PaletteIndex>(background));
 
         if (cell.codepoint <= U' ')
             return;

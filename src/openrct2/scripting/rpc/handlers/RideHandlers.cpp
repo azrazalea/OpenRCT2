@@ -113,7 +113,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
         {
             TileCoordsXY anchor;
             Direction direction{ 0 };
-            OpenRCT2::TrackElemType trackType{ OpenRCT2::TrackElemType::None };
+            OpenRCT2::TrackElemType trackType{ OpenRCT2::TrackElemType::none };
             std::vector<TileCoordsXY> tiles;
         };
 
@@ -567,7 +567,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto& gameState = getGameState();
             std::set<std::pair<int32_t, int32_t>> seen;
             RideFootprint footprint;
-            footprint.trackType = TrackElemType::None;
+            footprint.trackType = TrackElemType::none;
 
             TileCoordsXY tilePos;
             for (tilePos.y = 0; tilePos.y < gameState.mapSize.y; ++tilePos.y)
@@ -584,7 +584,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                         {
                             footprint.tiles.push_back(tilePos);
                         }
-                        if (footprint.trackType == TrackElemType::None)
+                        if (footprint.trackType == TrackElemType::none)
                         {
                             footprint.anchor = tilePos;
                             footprint.direction = trackElement->GetDirection();
@@ -670,7 +670,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                         continue;
                     }
 
-                    if (trackElement->GetTrackType() == TrackElemType::Maze)
+                    if (trackElement->GetTrackType() == TrackElemType::maze)
                     {
                         return DirectionReverse(searchDir);
                     }
@@ -779,7 +779,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             if (descriptor.BuildCosts.TrackPrice == kMoney64Undefined)
                 return std::nullopt;
             money64 price = descriptor.BuildCosts.TrackPrice;
-            if (descriptor.StartTrackPiece != TrackElemType::None)
+            if (descriptor.StartTrackPiece != TrackElemType::none)
             {
                 const auto& startPieceDescriptor = TrackMetaData::GetTrackElementDescriptor(descriptor.StartTrackPiece);
                 price *= startPieceDescriptor.priceModifier;
@@ -796,32 +796,31 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             return static_cast<double>(value) / 100.0;
         }
 
-        int32_t GetInspectionIntervalMinutes(uint8_t index)
+        int32_t GetInspectionIntervalMinutes(RideInspection interval)
         {
+            auto index = static_cast<uint8_t>(interval);
             if (index >= kRideInspectionIntervalMinutes.size())
                 return 0;
             return kRideInspectionIntervalMinutes[index];
         }
 
-        std::string_view InspectionIntervalToString(uint8_t value)
+        std::string_view InspectionIntervalToString(RideInspection value)
         {
             switch (value)
             {
-                case 0:
+                case RideInspection::every10Minutes:
                     return "10min";
-                case 1:
+                case RideInspection::every20Minutes:
                     return "20min";
-                case 2:
+                case RideInspection::every30Minutes:
                     return "30min";
-                case 3:
+                case RideInspection::every45Minutes:
                     return "45min";
-                case 4:
+                case RideInspection::everyHour:
                     return "60min";
-                case 5:
-                    return "90min";
-                case 6:
+                case RideInspection::every2Hours:
                     return "120min";
-                case 7:
+                case RideInspection::never:
                     return "never";
                 default:
                     return "unknown";
@@ -1146,12 +1145,12 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             rideJson["downtimePercent"] = ride.downtime;
             rideJson["minutesSinceInspection"] = ride.lastInspection;
             rideJson["inspectionIntervalMinutes"] = inspectionIntervalMinutes;
-            rideJson["inspectionIntervalIndex"] = ride.inspectionInterval;
+            rideJson["inspectionIntervalIndex"] = static_cast<uint8_t>(ride.inspectionInterval);
             rideJson["inspectionIntervalLabel"] = InspectionIntervalToString(ride.inspectionInterval);
             rideJson["dueInspection"] = (ride.lifecycleFlags & RIDE_LIFECYCLE_DUE_INSPECTION) != 0;
             rideJson["isBrokenDown"] =
                 (ride.lifecycleFlags & (RIDE_LIFECYCLE_BREAKDOWN_PENDING | RIDE_LIFECYCLE_BROKEN_DOWN)) != 0;
-            rideJson["mechanicDispatched"] = ride.mechanicStatus != 0;
+            rideJson["mechanicDispatched"] = ride.mechanicStatus != MechanicStatus::undefined;
             rideJson["ageMonths"] = ride.getAge();
             rideJson["numInversions"] = ride.numInversions;
             rideJson["lifecycleFlags"] = ride.lifecycleFlags;
@@ -1242,19 +1241,19 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             return node;
         }
 
-        std::string MechanicStatusKey(uint8_t status)
+        std::string MechanicStatusKey(MechanicStatus status)
         {
             switch (status)
             {
-                case RIDE_MECHANIC_STATUS_CALLING:
+                case MechanicStatus::calling:
                     return "calling";
-                case RIDE_MECHANIC_STATUS_HEADING:
+                case MechanicStatus::heading:
                     return "heading";
-                case RIDE_MECHANIC_STATUS_FIXING:
+                case MechanicStatus::fixing:
                     return "fixing";
-                case RIDE_MECHANIC_STATUS_HAS_FIXED_STATION_BRAKES:
+                case MechanicStatus::hasFixedStationBrakes:
                     return "resetting";
-                case RIDE_MECHANIC_STATUS_UNDEFINED:
+                case MechanicStatus::undefined:
                 default:
                     return "idle";
             }
@@ -2539,7 +2538,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             std::optional<uint8_t> inspectionValue;
             if (auto inspectionIndex = GetIntParam(params, "inspectionIndex"))
             {
-                if (*inspectionIndex < 0 || *inspectionIndex > RIDE_INSPECTION_NEVER)
+                if (*inspectionIndex < 0 || *inspectionIndex > static_cast<int32_t>(RideInspection::never))
                 {
                     return RpcResult::Error(kErrorInvalidParams, "inspectionIndex out of range");
                 }
@@ -2568,7 +2567,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                     return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(lastResult));
                 }
                 applied["inspectionIntervalIndex"] = inspectionValue.value();
-                applied["inspectionIntervalLabel"] = InspectionIntervalToString(inspectionValue.value());
+                applied["inspectionIntervalLabel"] = InspectionIntervalToString(static_cast<RideInspection>(inspectionValue.value()));
             }
 
             // Operating option (laps, launch speed, rotations, time limit - depends on ride type)
@@ -2967,7 +2966,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             {
                 return RpcResult::Error(kErrorInvalidParams, "rides.place currently supports flat rides only");
             }
-            if (blueprint->descriptor->StartTrackPiece == OpenRCT2::TrackElemType::None)
+            if (blueprint->descriptor->StartTrackPiece == OpenRCT2::TrackElemType::none)
             {
                 return RpcResult::Error(kErrorInvalidParams, "Ride does not define a buildable start piece");
             }
@@ -2999,7 +2998,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 int32_t colour2 = RideGetUnusedPresetVehicleColour(blueprint->entryIndex);
 
                 auto rideCreate = GameActions::RideCreateAction(
-                    blueprint->rideType, blueprint->entryIndex, colour1, colour2, gameState.lastEntranceStyle);
+                    blueprint->rideType, blueprint->entryIndex, colour1, colour2, gameState.lastEntranceStyle, RideInspection::every10Minutes);
                 auto createQueryResult = GameActions::Query(&rideCreate, gameState);
 
                 json_t payload = json_t::object();
@@ -3050,7 +3049,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             int32_t colour2 = RideGetUnusedPresetVehicleColour(blueprint->entryIndex);
 
             auto rideCreate = GameActions::RideCreateAction(
-                blueprint->rideType, blueprint->entryIndex, colour1, colour2, gameState.lastEntranceStyle);
+                blueprint->rideType, blueprint->entryIndex, colour1, colour2, gameState.lastEntranceStyle, RideInspection::every10Minutes);
             auto createResult = GameActions::ExecuteNested(&rideCreate, gameState);
             if (createResult.error != GameActions::Status::ok)
             {
@@ -3715,7 +3714,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             location.direction = directionParam & 3;
 
             // Execute the action in query mode
-            auto action = GameActions::TrackDesignAction(location, trackDesign, false);
+            auto action = GameActions::TrackDesignAction(location, trackDesign, false, RideInspection::every10Minutes);
             action.SetFlags({ GameActions::CommandFlag::noSpend }); // Query only
             auto result = GameActions::Query(&action, gameState);
 
@@ -3929,7 +3928,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             location.direction = directionParam & 3;
 
             // Execute the action
-            auto action = GameActions::TrackDesignAction(location, trackDesign, placeScenery);
+            auto action = GameActions::TrackDesignAction(location, trackDesign, placeScenery, RideInspection::every10Minutes);
             auto result = GameActions::Execute(&action, gameState);
 
             if (result.error != GameActions::Status::ok)
