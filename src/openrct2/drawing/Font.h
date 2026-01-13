@@ -14,6 +14,11 @@
 
 #include <array>
 
+// Windows headers define 'small' as a macro for 'char', which conflicts with our enum
+#ifdef small
+    #undef small
+#endif
+
 constexpr uint16_t kSpriteFontGlyphCount = 224;
 
 enum class FontStyle : uint8_t

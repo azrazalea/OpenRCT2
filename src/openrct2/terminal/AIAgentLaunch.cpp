@@ -31,6 +31,11 @@
 
 #if defined(__APPLE__) || defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
     #include <unistd.h>
+#elif defined(_WIN32)
+    #include <io.h>
+    #define access _access
+    #define X_OK 0
+    #define F_OK 0
 #endif
 
 namespace OpenRCT2::Terminal
@@ -88,6 +93,65 @@ namespace OpenRCT2::Terminal
 
             return std::nullopt;
         }
+#elif defined(_WIN32)
+        std::optional<std::string> FindExecutable(const std::string& name)
+        {
+            if (name.empty())
+            {
+                return std::nullopt;
+            }
+
+            // Common executable extensions on Windows
+            const std::vector<std::string> extensions = { "", ".exe", ".cmd", ".bat", ".com" };
+
+            // Check if it's an absolute path (contains \ or drive letter like C:)
+            if (name.find('\\') != std::string::npos || (name.length() >= 2 && name[1] == ':'))
+            {
+                for (const auto& ext : extensions)
+                {
+                    std::string candidate = name + ext;
+                    if (std::filesystem::exists(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+                return std::nullopt;
+            }
+
+            const char* pathEnv = std::getenv("PATH");
+            if (pathEnv == nullptr)
+            {
+                return std::nullopt;
+            }
+
+            std::string_view remaining(pathEnv);
+            size_t start = 0;
+            while (start <= remaining.size())
+            {
+                // Windows uses ; as PATH separator
+                const size_t end = remaining.find(';', start);
+                auto segment = remaining.substr(start, end == std::string_view::npos ? remaining.size() - start : end - start);
+                if (!segment.empty())
+                {
+                    for (const auto& ext : extensions)
+                    {
+                        std::filesystem::path candidate = std::filesystem::path(segment) / (name + ext);
+                        if (std::filesystem::exists(candidate))
+                        {
+                            return candidate.string();
+                        }
+                    }
+                }
+                if (end == std::string_view::npos)
+                {
+                    break;
+                }
+                start = end + 1;
+            }
+
+            return std::nullopt;
+        }
+#endif
 
         bool IsStubWorkspaceReadme(const std::filesystem::path& readmePath)
         {
@@ -173,11 +237,19 @@ namespace OpenRCT2::Terminal
 
         WorkspaceResult EnsureWorkspace()
         {
+#if defined(_WIN32)
+            const char* home = std::getenv("USERPROFILE");
+            if (!home || !*home)
+            {
+                return { {}, false, "USERPROFILE environment variable not set" };
+            }
+#else
             const char* home = std::getenv("HOME");
             if (!home || !*home)
             {
                 return { {}, false, "HOME environment variable not set" };
             }
+#endif
             auto workspace = std::filesystem::path(home) / kAgentWorkspaceDir;
             std::error_code ec;
             std::filesystem::create_directories(workspace, ec);
@@ -253,6 +325,11 @@ namespace OpenRCT2::Terminal
         {
             const auto base = repoRoot.value_or(std::filesystem::current_path());
             std::vector<std::filesystem::path> candidates = {
+                // Windows Visual Studio build locations
+                base / "bin" / "rctctl",
+                base / "rctctl" / "build" / "Release" / "rctctl",
+                base / "rctctl" / "build" / "Debug" / "rctctl",
+                // CMake build locations (Unix/macOS)
                 base / "build" / "rctctl" / "rctctl",
                 base / "build" / "rctctl" / "Release" / "rctctl",
                 base / "build" / "rctctl" / "Debug" / "rctctl",
@@ -371,7 +448,11 @@ namespace OpenRCT2::Terminal
             auto now = std::chrono::system_clock::now();
             auto timeT = std::chrono::system_clock::to_time_t(now);
             std::tm tm{};
+#if defined(_WIN32)
+            localtime_s(&tm, &timeT);
+#else
             localtime_r(&timeT, &tm);
+#endif
 
             std::ostringstream filename;
             filename << "agent-session-" << std::put_time(&tm, "%Y%m%d-%H%M%S");
@@ -448,13 +529,18 @@ namespace OpenRCT2::Terminal
             {
                 std::ostringstream buffer;
                 bool first = true;
+#if defined(_WIN32)
+                constexpr char kPathSeparator = ';';
+#else
+                constexpr char kPathSeparator = ':';
+#endif
                 for (size_t i = 0; i < segments.size(); ++i)
                 {
                     if (!segments[i].empty())
                     {
                         if (!first)
                         {
-                            buffer << ":";
+                            buffer << kPathSeparator;
                         }
                         first = false;
                         buffer << segments[i];
@@ -467,7 +553,6 @@ namespace OpenRCT2::Terminal
             }
         }
 
-#endif
     } // namespace
 
     AIAgentLaunchPlan BuildAIAgentLaunchPlan(int cols, int rows)
@@ -476,7 +561,7 @@ namespace OpenRCT2::Terminal
         plan.options.cols = cols;
         plan.options.rows = rows;
 
-#if defined(__APPLE__) || defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#if defined(__APPLE__) || defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(_WIN32)
         // Step 1: Detect repo root - REQUIRED for proper agent setup
         auto repoRoot = DetectRepoRoot();
         if (!repoRoot)
@@ -532,6 +617,11 @@ namespace OpenRCT2::Terminal
 
         if (const char* customCommand = std::getenv("AGENT_TERMINAL_COMMAND"))
         {
+#if defined(_WIN32)
+            // On Windows, use cmd.exe to run custom commands
+            // Session logging via script is not available, but in-game SessionLogGenerator handles it
+            plan.options.command = { "cmd.exe", "/c", customCommand };
+#else
             if (sessionLogFile)
             {
                 // Wrap with script to capture terminal output: script -q <logfile> /bin/sh -lc <command>
@@ -541,6 +631,7 @@ namespace OpenRCT2::Terminal
             {
                 plan.options.command = { "/bin/sh", "-lc", customCommand };
             }
+#endif
             plan.description = customCommand;
             plan.usesAgent = true;
             plan.available = true;
@@ -550,20 +641,30 @@ namespace OpenRCT2::Terminal
         // Check for Claude Code CLI (searching for "claude" executable is intentional - it's the actual product binary name)
         if (auto agentBin = FindExecutable("claude"))
         {
-            // Settings to pass to Claude Code CLI (disable spinner tips for cleaner UI)
-            constexpr const char* kClaudeSettings = R"({"spinnerTipsEnabled":false})";
-
             // Launch Claude directly - session logs are generated in-game via SessionLogGenerator
             // on terminal close and /clear command (more reliable than external wrapper scripts)
+#if defined(_WIN32)
+            // On Windows, launch Claude in a separate console window for proper terminal support
+            // The in-game window will show status while Claude runs in its own native console
+            plan.options.command = {
+                agentBin.value(), "--dangerously-skip-permissions"
+            };
+            plan.launchExternal = true;
+#else
+            // Settings to pass to Claude Code CLI (disable spinner tips for cleaner UI)
+            constexpr const char* kClaudeSettings = R"({"spinnerTipsEnabled":false})";
             plan.options.command = {
                 agentBin.value(), "--dangerously-skip-permissions", "--settings", kClaudeSettings
             };
+#endif
             plan.description = agentBin.value();
             plan.usesAgent = true;
             plan.available = true;
             return plan;
         }
 
+#if !defined(_WIN32)
+        // Bootstrap script fallback (Unix only - bash scripts don't work on Windows)
         auto resolveBootstrapScript = [&]() -> std::optional<std::filesystem::path> {
             constexpr std::string_view kBootstrap = "agent_bootstrap.sh";
             std::vector<std::filesystem::path> candidates;
@@ -598,6 +699,7 @@ namespace OpenRCT2::Terminal
             plan.available = true;
             return plan;
         }
+#endif
 
         plan.error = "Claude Code CLI not found. Install it with: npm install -g @anthropic-ai/claude-code";
         plan.available = false;

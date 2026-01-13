@@ -1,3 +1,14 @@
+cmake_minimum_required(VERSION 3.14)
+project(rctctl)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# When built standalone, set ROOT_DIR to parent directory
+if (NOT DEFINED ROOT_DIR)
+    get_filename_component(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+endif()
+
 set(RCTCTL_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/src/main.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/cli/cli.cpp"
@@ -43,6 +54,7 @@ endif()
 list(APPEND RCTCTL_JSON_HINTS
     "$ENV{NLOHMANN_JSON_INCLUDE_DIR}"
     "${ROOT_DIR}/lib/macos/include"
+    "${ROOT_DIR}/lib/x64/include"
     "/usr/include"
     "/usr/local/include"
 )

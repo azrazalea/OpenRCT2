@@ -23,6 +23,23 @@
 #include <limits>
 #include <vector>
 
+#if defined(_WIN32)
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #include <windows.h>
+    // Undefine Windows macros that conflict with OpenRCT2 code
+    #ifdef CreateWindow
+        #undef CreateWindow
+    #endif
+    #ifdef DrawText
+        #undef DrawText
+    #endif
+#endif
+
 #include <SDL.h>
 #include <SDL_clipboard.h>
 #include <SDL_keycode.h>
@@ -697,6 +714,10 @@ namespace OpenRCT2::Ui::Windows
         bool _launchAttempted = false;
         bool _textCaptureActive = false;
         bool _lastProcessRunning = false;
+#if defined(_WIN32)
+        void* _externalProcessHandle = nullptr;  // HANDLE for external Claude process
+        bool _externalLaunchActive = false;
+#endif
         bool _needsFullRedraw = true;
         uint64_t _lastOutputTimestamp = 0;
         int32_t _cellWidth = 8;
@@ -799,8 +820,8 @@ namespace OpenRCT2::Ui::Windows
         void DrawTerminalToBuffer(RenderTarget& rt, int32_t canvasWidth, int32_t canvasHeight, const std::vector<std::string>& lines) const;
         void DrawTerminalDirty(RenderTarget& rt, int32_t canvasWidth, int32_t canvasHeight,
             const std::vector<TerminalCell>& cells, const std::vector<std::string>& lines);
-        void EnsureOffscreenBuffer(int32_t width, int32_t height);
-        void BlitOffscreenToScreen(RenderTarget& screenRT, const ScreenCoordsXY& destPos, int32_t width, int32_t height);
+        void EnsureOffscreenBuffer(int32_t bufWidth, int32_t bufHeight);
+        void BlitOffscreenToScreen(RenderTarget& screenRT, const ScreenCoordsXY& destPos, int32_t blitWidth, int32_t blitHeight);
         void DrawCells(RenderTarget& rt, const ScreenCoordsXY& origin, int32_t canvasWidth, int32_t canvasHeight) const;
         void DrawRowCells(RenderTarget& rt, const ScreenCoordsXY& rowOrigin, std::span<const TerminalCell> row) const;
         void DrawCellAt(RenderTarget& rt, const ScreenCoordsXY& rowOrigin, int32_t col, const TerminalCell& cell) const;
@@ -880,7 +901,11 @@ namespace OpenRCT2::Ui::Windows
         }
 
         // Initialize workspace path for session logging
+#if defined(_WIN32)
+        const char* home = std::getenv("USERPROFILE");
+#else
         const char* home = std::getenv("HOME");
+#endif
         if (home && *home)
         {
             _workspacePath = std::filesystem::path(home) / ".openrct2-agent";
@@ -955,8 +980,24 @@ namespace OpenRCT2::Ui::Windows
             sAIAgentTerminalInstance = nullptr;
         }
 
-        // Generate HTML session log before closing
-        GenerateSessionLog();
+#if defined(_WIN32)
+        // Terminate external Claude process if running
+        if (_externalLaunchActive && _externalProcessHandle != nullptr)
+        {
+            TerminateProcess(static_cast<HANDLE>(_externalProcessHandle), 0);
+            CloseHandle(static_cast<HANDLE>(_externalProcessHandle));
+            _externalProcessHandle = nullptr;
+            _externalLaunchActive = false;
+        }
+#endif
+
+        // Generate HTML session log before closing (skip if external launch - no terminal session)
+#if defined(_WIN32)
+        if (!_externalLaunchActive)
+#endif
+        {
+            GenerateSessionLog();
+        }
 
         // Release viewport lock so manual panning works after terminal closes
         SetViewportLock(false);
@@ -1006,9 +1047,9 @@ namespace OpenRCT2::Ui::Windows
         const int16_t targetWidth = collapsed
             ? GetCollapsedWidth()
             : std::clamp<int16_t>(_restoreWidth, kAgentWindowSize.width, kAgentWindowMaxSize.width);
-        const int16_t minHeight = kAgentWindowSize.height;
-        const int16_t maxHeight = kAgentWindowMaxSize.height;
-        const int16_t targetHeight = std::clamp<int16_t>(height, minHeight, maxHeight);
+        const int16_t minH = kAgentWindowSize.height;
+        const int16_t maxH = kAgentWindowMaxSize.height;
+        const int16_t targetHeight = std::clamp<int16_t>(height, minH, maxH);
 
         const int16_t dw = static_cast<int16_t>(targetWidth - width);
         const int16_t dh = static_cast<int16_t>(targetHeight - height);
@@ -1071,6 +1112,139 @@ namespace OpenRCT2::Ui::Windows
             return;
         }
 
+        LOG_INFO("AIAgentTerminal: Launching with command: %s",
+            _launchPlan.options.command.empty() ? "(empty)" : _launchPlan.options.command[0].c_str());
+
+#if defined(_WIN32)
+        // On Windows, launch Claude in a separate console window for proper terminal support
+        if (_launchPlan.launchExternal && !_launchPlan.options.command.empty())
+        {
+            // Build command line string
+            std::string cmdLine;
+            for (size_t i = 0; i < _launchPlan.options.command.size(); i++)
+            {
+                if (i > 0) cmdLine += " ";
+                // Quote arguments that contain spaces
+                const auto& arg = _launchPlan.options.command[i];
+                if (arg.find(' ') != std::string::npos)
+                {
+                    cmdLine += "\"" + arg + "\"";
+                }
+                else
+                {
+                    cmdLine += arg;
+                }
+            }
+
+            // Convert to wide string for CreateProcessW
+            std::wstring wCmdLine(cmdLine.begin(), cmdLine.end());
+            std::wstring wWorkDir;
+            if (!_launchPlan.options.workingDirectory.empty())
+            {
+                wWorkDir = std::wstring(_launchPlan.options.workingDirectory.begin(),
+                                        _launchPlan.options.workingDirectory.end());
+            }
+
+            // Build environment block - inherit current environment and add custom vars
+            std::wstring envBlock;
+            wchar_t* currentEnv = GetEnvironmentStringsW();
+            if (currentEnv != nullptr)
+            {
+                // Copy current environment (each var is null-terminated, block ends with double null)
+                const wchar_t* ptr = currentEnv;
+                while (*ptr != L'\0')
+                {
+                    size_t len = wcslen(ptr);
+                    // Skip any existing vars that we're overriding
+                    std::wstring varW(ptr, len);
+                    bool skip = false;
+                    for (const auto& customVar : _launchPlan.options.environment)
+                    {
+                        size_t eqPos = customVar.find('=');
+                        if (eqPos != std::string::npos)
+                        {
+                            std::string varName = customVar.substr(0, eqPos + 1);
+                            std::wstring varNameW(varName.begin(), varName.end());
+                            if (varW.substr(0, varNameW.size()) == varNameW)
+                            {
+                                skip = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!skip)
+                    {
+                        envBlock.append(ptr, len);
+                        envBlock += L'\0';
+                    }
+                    ptr += len + 1;
+                }
+                FreeEnvironmentStringsW(currentEnv);
+            }
+            // Add custom environment variables
+            for (const auto& env : _launchPlan.options.environment)
+            {
+                std::wstring wEnv(env.begin(), env.end());
+                envBlock += wEnv;
+                envBlock += L'\0';
+            }
+            envBlock += L'\0';  // Double null terminator
+
+            STARTUPINFOW si = {};
+            si.cb = sizeof(si);
+            si.dwFlags = STARTF_USESHOWWINDOW;
+            si.wShowWindow = SW_SHOW;
+            PROCESS_INFORMATION pi = {};
+
+            BOOL success = CreateProcessW(
+                nullptr,
+                wCmdLine.data(),
+                nullptr,
+                nullptr,
+                FALSE,
+                CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT,
+                envBlock.data(),
+                wWorkDir.empty() ? nullptr : wWorkDir.c_str(),
+                &si,
+                &pi
+            );
+
+            if (success)
+            {
+                // Store process handle for monitoring
+                _externalProcessHandle = pi.hProcess;
+                CloseHandle(pi.hThread);
+
+                // Create a Job Object to automatically terminate Claude when the game exits
+                HANDLE hJob = CreateJobObjectW(nullptr, nullptr);
+                if (hJob != nullptr)
+                {
+                    JOBOBJECT_EXTENDED_LIMIT_INFORMATION jobInfo = {};
+                    jobInfo.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+                    SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &jobInfo, sizeof(jobInfo));
+                    AssignProcessToJobObject(hJob, pi.hProcess);
+                    // Don't close hJob - keep it open so the job stays active
+                    // It will be cleaned up when our process exits
+                }
+
+                LOG_INFO("AIAgentTerminal: Claude launched in external console window");
+                _statusMessage = "Claude running in external console window";
+                _errorMessage.clear();
+                _externalLaunchActive = true;
+            }
+            else
+            {
+                DWORD err = GetLastError();
+                _errorMessage = "Failed to launch Claude: error " + std::to_string(err);
+                LOG_WARNING("AIAgentTerminal: External launch failed: %s", _errorMessage.c_str());
+            }
+
+            _needsFullRedraw = true;
+            invalidateWidget(WIDX_TERMINAL_CANVAS);
+            return;
+        }
+#endif
+
         std::string error;
         _shellProcess = LaunchShellProcess(_launchPlan.options, error);
         if (!_shellProcess)
@@ -1081,6 +1255,7 @@ namespace OpenRCT2::Ui::Windows
             return;
         }
 
+        LOG_INFO("AIAgentTerminal: Shell process created successfully");
         _statusMessage = "Running: " + _launchPlan.description;
         _errorMessage.clear();
         _needsFullRedraw = true;
@@ -1573,6 +1748,10 @@ namespace OpenRCT2::Ui::Windows
 
         if (totalRead > 0)
         {
+            if (!_hasSeenOutput)
+            {
+                LOG_INFO("AIAgentTerminal: First output received (%zu bytes)", totalRead);
+            }
             EnsureSession();
             UpdateSynchronizedUpdateState({ _ptyDrainBuffer.data(), totalRead });
             _terminalSession->FeedOutput({ _ptyDrainBuffer.data(), totalRead });
@@ -1873,6 +2052,8 @@ namespace OpenRCT2::Ui::Windows
         _snapshot = std::move(_pendingSnapshot);
         _hasSnapshot = true;
         _hasPendingSnapshot = false;
+        LOG_INFO("AIAgentTerminal: Snapshot updated, rows=%d cols=%d cells=%zu",
+            _snapshot.rows, _snapshot.cols, _snapshot.cells.size());
 
         // Auto-scroll to tail if:
         // 1. Scroll lock is enabled (force stay at bottom), OR
@@ -2129,33 +2310,42 @@ namespace OpenRCT2::Ui::Windows
         return { cols, rows, widthPx, heightPx };
     }
 
-    void AIAgentTerminalWindow::EnsureOffscreenBuffer(int32_t width, int32_t height)
+    void AIAgentTerminalWindow::EnsureOffscreenBuffer(int32_t bufWidth, int32_t bufHeight)
     {
-        if (_offscreenWidth == width && _offscreenHeight == height && _offscreenBuffer)
+        if (_offscreenWidth == bufWidth && _offscreenHeight == bufHeight && _offscreenBuffer)
             return;
 
         // Allocate new buffer
-        const size_t bufferSize = static_cast<size_t>(width) * height;
+        const size_t bufferSize = static_cast<size_t>(bufWidth) * bufHeight;
         _offscreenBuffer = std::make_unique<uint8_t[]>(bufferSize);
-        _offscreenWidth = width;
-        _offscreenHeight = height;
+        _offscreenWidth = bufWidth;
+        _offscreenHeight = bufHeight;
 
         // Clear to background color
         std::fill_n(_offscreenBuffer.get(), bufferSize, ColourMapA[COLOUR_BLACK].mid_dark);
     }
 
     void AIAgentTerminalWindow::BlitOffscreenToScreen(
-        RenderTarget& screenRT, const ScreenCoordsXY& destPos, int32_t width, int32_t height)
+        RenderTarget& screenRT, const ScreenCoordsXY& destPos, int32_t blitWidth, int32_t blitHeight)
     {
-        if (!_offscreenBuffer || width <= 0 || height <= 0)
+        if (!_offscreenBuffer || blitWidth <= 0 || blitHeight <= 0)
+        {
+            static bool sWarnedOnce = false;
+            if (!sWarnedOnce)
+            {
+                LOG_WARNING("AIAgentTerminal: BlitOffscreenToScreen skipped - buffer=%p, w=%d, h=%d",
+                    static_cast<void*>(_offscreenBuffer.get()), blitWidth, blitHeight);
+                sWarnedOnce = true;
+            }
             return;
+        }
 
         // Convert screen coordinates to buffer-relative coordinates
         // (same transformation that FillRect uses internally)
         int32_t srcX = 0, srcY = 0;
         int32_t dstX = destPos.x - screenRT.x;
         int32_t dstY = destPos.y - screenRT.y;
-        int32_t copyWidth = width, copyHeight = height;
+        int32_t copyWidth = blitWidth, copyHeight = blitHeight;
 
         // Clip left edge
         if (dstX < 0)
@@ -2201,6 +2391,15 @@ namespace OpenRCT2::Ui::Windows
 
     void AIAgentTerminalWindow::DrawTerminalDoubleBuffered(RenderTarget& screenRT, const Widget& widget)
     {
+        static int sDrawCount = 0;
+        sDrawCount++;
+        if (sDrawCount <= 5 || (sDrawCount % 100 == 0))
+        {
+            LOG_INFO("AIAgentTerminal: Draw #%d, _hasSnapshot=%d, _terminalFontReady=%d, offscreen=%p",
+                sDrawCount, _hasSnapshot ? 1 : 0, _terminalFontReady ? 1 : 0,
+                static_cast<void*>(_offscreenBuffer.get()));
+        }
+
         // Use full widget size (including padding) to avoid unfilled gaps.
         // Widget coordinates are inclusive, so add 1 for actual pixel dimensions.
         const int32_t widgetWidth = widget.right - widget.left + 1;
@@ -2247,26 +2446,95 @@ namespace OpenRCT2::Ui::Windows
             forceFullRedraw = (_lastOverlayVisible != overlayVisible) || (_lastOverlayHeightPx != overlayHeightPx);
         }
 
-        if (forceFullRedraw)
+        // Draw directly to screen (bypasses offscreen buffer which has issues on Windows)
+        ScreenCoordsXY widgetScreenPos = windowPos + ScreenCoordsXY{ widget.left, widget.top };
+
+        // Draw background
+        ScreenCoordsXY bgTopLeft = widgetScreenPos;
+        ScreenCoordsXY bgBottomRight = widgetScreenPos + ScreenCoordsXY{ widgetWidth - 1, widgetHeight - 1 };
+        Rect::fill(screenRT, { bgTopLeft, bgBottomRight }, ColourMapA[COLOUR_BLACK].mid_dark);
+
+        // Draw cells if we have a snapshot - use native DrawText for proper UTF-8 support
+        if (_hasSnapshot && !_snapshot.cells.empty())
         {
-            // Draw terminal content to offscreen buffer (includes padding fill)
-            DrawTerminalToBuffer(offscreenRT, widgetWidth, widgetHeight, lines);
-            _renderedCells = std::move(currentCells);
-            _renderedCols = _hasSnapshot ? _snapshot.cols : 0;
-            _renderedRows = _hasSnapshot ? _visibleRows : 0;
-            _needsFullRedraw = false;
+            const int32_t cols = _snapshot.cols;
+            const int32_t rows = std::min(_visibleRows, _snapshot.rows);
+            ScreenCoordsXY contentOrigin = widgetScreenPos + ScreenCoordsXY{ kTerminalPadding, kTerminalPadding };
+
+            // Build and draw each row as a single string using native text rendering
+            for (int32_t row = 0; row < rows; row++)
+            {
+                // Build UTF-8 string for this row
+                std::string rowText;
+                rowText.reserve(static_cast<size_t>(cols) * 4); // Reserve for worst-case UTF-8
+
+                for (int32_t col = 0; col < cols; col++)
+                {
+                    const size_t idx = static_cast<size_t>(row) * cols + col;
+                    if (idx >= _snapshot.cells.size())
+                        break;
+
+                    const auto& cell = _snapshot.cells[idx];
+
+                    // Skip continuation cells (part of wide characters)
+                    if (cell.continuation)
+                        continue;
+
+                    // Convert codepoint to UTF-8, substituting box drawing chars with ASCII
+                    char32_t cp = cell.codepoint;
+                    if (cp > 0 && cp != U' ')
+                    {
+                        // Substitute box drawing characters (U+2500-U+257F) with ASCII
+                        if (cp >= 0x2500 && cp <= 0x257F)
+                        {
+                            // Horizontal lines
+                            if (cp == 0x2500 || cp == 0x2501 || cp == 0x2504 || cp == 0x2505 ||
+                                cp == 0x2508 || cp == 0x2509 || cp == 0x254C || cp == 0x254D)
+                                cp = '-';
+                            // Vertical lines
+                            else if (cp == 0x2502 || cp == 0x2503 || cp == 0x2506 || cp == 0x2507 ||
+                                     cp == 0x250A || cp == 0x250B || cp == 0x254E || cp == 0x254F)
+                                cp = '|';
+                            // Corners and intersections become +
+                            else
+                                cp = '+';
+                        }
+                        // Block elements (U+2580-U+259F) - use # or space
+                        else if (cp >= 0x2580 && cp <= 0x259F)
+                        {
+                            cp = '#';
+                        }
+
+                        char buffer[8] = {};
+                        char* end = UTF8WriteCodepoint(buffer, static_cast<uint32_t>(cp));
+                        rowText.append(buffer, end - buffer);
+                    }
+                    else
+                    {
+                        rowText.push_back(' ');
+                    }
+                }
+
+                // Trim trailing spaces for cleaner rendering
+                while (!rowText.empty() && rowText.back() == ' ')
+                    rowText.pop_back();
+
+                // Draw the row using native text rendering
+                if (!rowText.empty())
+                {
+                    ScreenCoordsXY rowPos = contentOrigin + ScreenCoordsXY{ 0, row * _cellHeight };
+                    DrawText(screenRT, rowPos, { COLOUR_WHITE, FontStyle::medium }, rowText.c_str(), true);
+                }
+            }
         }
-        else
-        {
-            DrawTerminalDirty(offscreenRT, widgetWidth, widgetHeight, currentCells, lines);
-        }
+
+        // Draw status overlay
+        ScreenCoordsXY overlayOrigin = widgetScreenPos + ScreenCoordsXY{ kTerminalPadding, kTerminalPadding };
+        DrawStatusOverlay(screenRT, overlayOrigin, contentWidth, contentHeight, lines);
 
         _lastOverlayVisible = overlayVisible;
         _lastOverlayHeightPx = overlayHeightPx;
-
-        // Blit the complete widget frame to screen in one operation
-        ScreenCoordsXY destPos = windowPos + ScreenCoordsXY{ widget.left, widget.top };
-        BlitOffscreenToScreen(screenRT, destPos, widgetWidth, widgetHeight);
+        _needsFullRedraw = false;
     }
 
     void AIAgentTerminalWindow::DrawTerminalToBuffer(
@@ -2879,7 +3147,11 @@ namespace OpenRCT2::Ui::Windows
         _autoplayPromptIndex = 0;
 
         // Try to load from workspace auto_prompts.txt
+#if defined(_WIN32)
+        const char* home = std::getenv("USERPROFILE");
+#else
         const char* home = std::getenv("HOME");
+#endif
         if (!home || !*home)
         {
             return;
@@ -3108,12 +3380,21 @@ namespace OpenRCT2::Ui::Windows
     void AIAgentTerminalWindow::InitializeSessionMonitor()
     {
         // Get the workspace path that Claude is running in
+#if defined(_WIN32)
+        const char* home = std::getenv("USERPROFILE");
+        if (!home || !*home)
+        {
+            LOG_WARNING("Auto-play: Cannot initialize session monitor - USERPROFILE not set");
+            return;
+        }
+#else
         const char* home = std::getenv("HOME");
         if (!home || !*home)
         {
             LOG_WARNING("Auto-play: Cannot initialize session monitor - HOME not set");
             return;
         }
+#endif
         auto workspacePath = std::filesystem::path(home) / ".openrct2-agent";
 
         // Create session monitor to watch Claude's JSONL session files
@@ -3212,9 +3493,131 @@ namespace OpenRCT2::Ui::Windows
 
     WindowBase* AIAgentTerminalOpen()
     {
+#if defined(_WIN32)
+        // On Windows, launch Claude in a separate console window without creating an in-game terminal
+        auto plan = BuildAIAgentLaunchPlan(80, 24);
+        if (!plan.available || !plan.launchExternal || plan.options.command.empty())
+        {
+            // Fall back to in-game window if external launch not available
+            auto* windowMgr = GetWindowManager();
+            return windowMgr->FocusOrCreate<AIAgentTerminalWindow>(
+                WindowClass::aiAgentTerminal, kAgentWindowSize,
+                { WindowFlag::resizable, WindowFlag::autoPosition, WindowFlag::higherContrastOnPress, WindowFlag::noPush });
+        }
+
+        // Build command line string
+        std::string cmdLine;
+        for (size_t i = 0; i < plan.options.command.size(); i++)
+        {
+            if (i > 0) cmdLine += " ";
+            const auto& arg = plan.options.command[i];
+            if (arg.find(' ') != std::string::npos)
+            {
+                cmdLine += "\"" + arg + "\"";
+            }
+            else
+            {
+                cmdLine += arg;
+            }
+        }
+
+        std::wstring wCmdLine(cmdLine.begin(), cmdLine.end());
+        std::wstring wWorkDir;
+        if (!plan.options.workingDirectory.empty())
+        {
+            wWorkDir = std::wstring(plan.options.workingDirectory.begin(),
+                                    plan.options.workingDirectory.end());
+        }
+
+        // Build environment block
+        std::wstring envBlock;
+        wchar_t* currentEnv = GetEnvironmentStringsW();
+        if (currentEnv != nullptr)
+        {
+            const wchar_t* ptr = currentEnv;
+            while (*ptr != L'\0')
+            {
+                size_t len = wcslen(ptr);
+                std::wstring varW(ptr, len);
+                bool skip = false;
+                for (const auto& customVar : plan.options.environment)
+                {
+                    size_t eqPos = customVar.find('=');
+                    if (eqPos != std::string::npos)
+                    {
+                        std::string varName = customVar.substr(0, eqPos + 1);
+                        std::wstring varNameW(varName.begin(), varName.end());
+                        if (varW.substr(0, varNameW.size()) == varNameW)
+                        {
+                            skip = true;
+                            break;
+                        }
+                    }
+                }
+                if (!skip)
+                {
+                    envBlock.append(ptr, len);
+                    envBlock += L'\0';
+                }
+                ptr += len + 1;
+            }
+            FreeEnvironmentStringsW(currentEnv);
+        }
+        for (const auto& env : plan.options.environment)
+        {
+            std::wstring wEnv(env.begin(), env.end());
+            envBlock += wEnv;
+            envBlock += L'\0';
+        }
+        envBlock += L'\0';
+
+        STARTUPINFOW si = {};
+        si.cb = sizeof(si);
+        si.dwFlags = STARTF_USESHOWWINDOW;
+        si.wShowWindow = SW_SHOW;
+        PROCESS_INFORMATION pi = {};
+
+        BOOL success = CreateProcessW(
+            nullptr,
+            wCmdLine.data(),
+            nullptr,
+            nullptr,
+            FALSE,
+            CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT,
+            envBlock.data(),
+            wWorkDir.empty() ? nullptr : wWorkDir.c_str(),
+            &si,
+            &pi
+        );
+
+        if (success)
+        {
+            CloseHandle(pi.hThread);
+
+            // Create Job Object to auto-terminate Claude when game exits
+            HANDLE hJob = CreateJobObjectW(nullptr, nullptr);
+            if (hJob != nullptr)
+            {
+                JOBOBJECT_EXTENDED_LIMIT_INFORMATION jobInfo = {};
+                jobInfo.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+                SetInformationJobObject(hJob, JobObjectExtendedLimitInformation, &jobInfo, sizeof(jobInfo));
+                AssignProcessToJobObject(hJob, pi.hProcess);
+            }
+
+            LOG_INFO("AIAgentTerminal: Claude launched in external console window (no in-game window)");
+            CloseHandle(pi.hProcess);
+        }
+        else
+        {
+            LOG_WARNING("AIAgentTerminal: Failed to launch Claude externally: %lu", GetLastError());
+        }
+
+        return nullptr;  // No in-game window
+#else
         auto* windowMgr = GetWindowManager();
         return windowMgr->FocusOrCreate<AIAgentTerminalWindow>(
             WindowClass::aiAgentTerminal, kAgentWindowSize,
             { WindowFlag::resizable, WindowFlag::autoPosition, WindowFlag::higherContrastOnPress, WindowFlag::noPush });
+#endif
     }
 } // namespace OpenRCT2::Ui::Windows

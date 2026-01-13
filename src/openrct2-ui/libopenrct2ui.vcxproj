@@ -103,6 +103,7 @@
     <ClInclude Include="UiContext.h" />
     <ClInclude Include="UiStringIds.h" />
     <ClInclude Include="WindowManager.h" />
+    <ClInclude Include="aiagent\AIAgentFollowController.h" />
     <ClInclude Include="windows\Windows.h" />
   </ItemGroup>
   <ItemGroup>
@@ -162,6 +163,7 @@
     <ClCompile Include="UiContext.Linux.cpp" />
     <ClCompile Include="UiContext.Win32.cpp" />
     <ClCompile Include="WindowManager.cpp" />
+    <ClCompile Include="aiagent\AIAgentFollowController.cpp" />
     <ClCompile Include="windows\About.cpp" />
     <ClCompile Include="windows\AssetPacks.cpp" />
     <ClCompile Include="windows\Banner.cpp" />

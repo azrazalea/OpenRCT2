@@ -21,7 +21,15 @@
 #include <thread>
 #include <chrono>
 
-#if defined(__APPLE__)
+#if defined(_WIN32)
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #include <windows.h>
+#elif defined(__APPLE__)
     #include <sys/ioctl.h>
     #include <sys/types.h>
     #include <termios.h>
@@ -300,6 +308,354 @@ namespace OpenRCT2::Terminal
             return std::make_unique<PosixShellProcess>(masterFd, pid, JoinCommand(options.command));
         }
 #endif
+
+#if defined(_WIN32)
+        std::string JoinCommandWindows(const std::vector<std::string>& command)
+        {
+            std::ostringstream ss;
+            for (size_t i = 0; i < command.size(); i++)
+            {
+                if (i != 0)
+                {
+                    ss << ' ';
+                }
+                // Quote arguments that contain spaces
+                const auto& arg = command[i];
+                if (arg.find(' ') != std::string::npos || arg.find('\t') != std::string::npos)
+                {
+                    ss << '"' << arg << '"';
+                }
+                else
+                {
+                    ss << arg;
+                }
+            }
+            return ss.str();
+        }
+
+        class WindowsShellProcess final : public ShellProcess
+        {
+        public:
+            WindowsShellProcess(
+                HPCON hPC, HANDLE hProcess, HANDLE hThread, HANDLE hPipeIn, HANDLE hPipeOut, std::string description)
+                : _hPC(hPC)
+                , _hProcess(hProcess)
+                , _hThread(hThread)
+                , _hPipeIn(hPipeIn)
+                , _hPipeOut(hPipeOut)
+                , _description(std::move(description))
+            {
+            }
+
+            ~WindowsShellProcess() override
+            {
+                Cleanup();
+            }
+
+            [[nodiscard]] bool IsRunning() const override
+            {
+                if (_exited)
+                    return false;
+
+                DWORD exitCode = 0;
+                if (GetExitCodeProcess(_hProcess, &exitCode))
+                {
+                    if (exitCode != STILL_ACTIVE)
+                    {
+                        _exited = true;
+                        _exitStatus = static_cast<int>(exitCode);
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            ssize_t Read(uint8_t* buffer, size_t length) override
+            {
+                if (_hPipeIn == INVALID_HANDLE_VALUE)
+                    return -1;
+
+                // Check if there's data available (non-blocking)
+                DWORD available = 0;
+                if (!PeekNamedPipe(_hPipeIn, nullptr, 0, nullptr, &available, nullptr))
+                {
+                    CheckProcess();
+                    return _exited ? -1 : 0;
+                }
+
+                if (available == 0)
+                {
+                    CheckProcess();
+                    return 0;
+                }
+
+                DWORD toRead = static_cast<DWORD>(std::min<size_t>(length, available));
+                DWORD bytesRead = 0;
+                if (!ReadFile(_hPipeIn, buffer, toRead, &bytesRead, nullptr))
+                {
+                    CheckProcess();
+                    return _exited ? -1 : 0;
+                }
+
+                return static_cast<ssize_t>(bytesRead);
+            }
+
+            bool Write(std::span<const uint8_t> data) override
+            {
+                if (_hPipeOut == INVALID_HANDLE_VALUE || data.empty())
+                    return false;
+
+                const uint8_t* ptr = data.data();
+                size_t remaining = data.size();
+                while (remaining > 0)
+                {
+                    DWORD written = 0;
+                    DWORD toWrite = static_cast<DWORD>(std::min<size_t>(remaining, 0xFFFFFFFF));
+                    if (!WriteFile(_hPipeOut, ptr, toWrite, &written, nullptr))
+                    {
+                        return false;
+                    }
+                    ptr += written;
+                    remaining -= written;
+                }
+                return true;
+            }
+
+            void Resize(int cols, int rows) override
+            {
+                if (_hPC == nullptr)
+                    return;
+
+                COORD size;
+                size.X = static_cast<SHORT>(std::clamp(cols, 2, 500));
+                size.Y = static_cast<SHORT>(std::clamp(rows, 2, 500));
+                ResizePseudoConsole(_hPC, size);
+            }
+
+            [[nodiscard]] int ExitStatus() const override
+            {
+                return _exitStatus;
+            }
+
+            [[nodiscard]] std::string_view CommandDescription() const override
+            {
+                return _description;
+            }
+
+        private:
+            HPCON _hPC = nullptr;
+            HANDLE _hProcess = INVALID_HANDLE_VALUE;
+            HANDLE _hThread = INVALID_HANDLE_VALUE;
+            HANDLE _hPipeIn = INVALID_HANDLE_VALUE;
+            HANDLE _hPipeOut = INVALID_HANDLE_VALUE;
+            std::string _description;
+            mutable bool _exited = false;
+            mutable int _exitStatus = 0;
+
+            void CheckProcess()
+            {
+                if (_exited)
+                    return;
+
+                DWORD exitCode = 0;
+                if (GetExitCodeProcess(_hProcess, &exitCode) && exitCode != STILL_ACTIVE)
+                {
+                    _exited = true;
+                    _exitStatus = static_cast<int>(exitCode);
+                }
+            }
+
+            void Cleanup()
+            {
+                if (_hProcess != INVALID_HANDLE_VALUE && !_exited)
+                {
+                    // Try graceful termination first
+                    TerminateProcess(_hProcess, 1);
+                    WaitForSingleObject(_hProcess, 500);
+                }
+
+                if (_hPC != nullptr)
+                {
+                    ClosePseudoConsole(_hPC);
+                    _hPC = nullptr;
+                }
+                if (_hPipeIn != INVALID_HANDLE_VALUE)
+                {
+                    CloseHandle(_hPipeIn);
+                    _hPipeIn = INVALID_HANDLE_VALUE;
+                }
+                if (_hPipeOut != INVALID_HANDLE_VALUE)
+                {
+                    CloseHandle(_hPipeOut);
+                    _hPipeOut = INVALID_HANDLE_VALUE;
+                }
+                if (_hThread != INVALID_HANDLE_VALUE)
+                {
+                    CloseHandle(_hThread);
+                    _hThread = INVALID_HANDLE_VALUE;
+                }
+                if (_hProcess != INVALID_HANDLE_VALUE)
+                {
+                    CloseHandle(_hProcess);
+                    _hProcess = INVALID_HANDLE_VALUE;
+                }
+            }
+        };
+
+        std::unique_ptr<ShellProcess> LaunchWindowsProcess(const ShellLaunchOptions& options, std::string& errorOut)
+        {
+            if (options.command.empty())
+            {
+                errorOut = "No command specified for terminal session.";
+                return nullptr;
+            }
+
+            HANDLE hPipeInRead = INVALID_HANDLE_VALUE;
+            HANDLE hPipeInWrite = INVALID_HANDLE_VALUE;
+            HANDLE hPipeOutRead = INVALID_HANDLE_VALUE;
+            HANDLE hPipeOutWrite = INVALID_HANDLE_VALUE;
+            HPCON hPC = nullptr;
+
+            auto cleanup = [&]() {
+                if (hPipeInRead != INVALID_HANDLE_VALUE)
+                    CloseHandle(hPipeInRead);
+                if (hPipeInWrite != INVALID_HANDLE_VALUE)
+                    CloseHandle(hPipeInWrite);
+                if (hPipeOutRead != INVALID_HANDLE_VALUE)
+                    CloseHandle(hPipeOutRead);
+                if (hPipeOutWrite != INVALID_HANDLE_VALUE)
+                    CloseHandle(hPipeOutWrite);
+                if (hPC != nullptr)
+                    ClosePseudoConsole(hPC);
+            };
+
+            // Create pipes for stdin and stdout
+            SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE };
+            if (!CreatePipe(&hPipeInRead, &hPipeInWrite, &sa, 0))
+            {
+                errorOut = "Failed to create input pipe";
+                cleanup();
+                return nullptr;
+            }
+            if (!CreatePipe(&hPipeOutRead, &hPipeOutWrite, &sa, 0))
+            {
+                errorOut = "Failed to create output pipe";
+                cleanup();
+                return nullptr;
+            }
+
+            // Create the pseudo console
+            COORD consoleSize;
+            consoleSize.X = static_cast<SHORT>(std::clamp(options.cols, 2, 500));
+            consoleSize.Y = static_cast<SHORT>(std::clamp(options.rows, 2, 500));
+
+            HRESULT hr = CreatePseudoConsole(consoleSize, hPipeOutRead, hPipeInWrite, 0, &hPC);
+            if (FAILED(hr))
+            {
+                errorOut = "Failed to create pseudo console (requires Windows 10 1809+)";
+                cleanup();
+                return nullptr;
+            }
+
+            // Close the handles that are now owned by the pseudo console
+            CloseHandle(hPipeOutRead);
+            hPipeOutRead = INVALID_HANDLE_VALUE;
+            CloseHandle(hPipeInWrite);
+            hPipeInWrite = INVALID_HANDLE_VALUE;
+
+            // Initialize the startup info with the pseudo console
+            STARTUPINFOEXW startupInfo = {};
+            startupInfo.StartupInfo.cb = sizeof(STARTUPINFOEXW);
+
+            SIZE_T attrListSize = 0;
+            InitializeProcThreadAttributeList(nullptr, 1, 0, &attrListSize);
+
+            std::vector<uint8_t> attrListBuffer(attrListSize);
+            startupInfo.lpAttributeList = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attrListBuffer.data());
+
+            if (!InitializeProcThreadAttributeList(startupInfo.lpAttributeList, 1, 0, &attrListSize))
+            {
+                errorOut = "Failed to initialize attribute list";
+                cleanup();
+                return nullptr;
+            }
+
+            if (!UpdateProcThreadAttribute(
+                    startupInfo.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE, hPC, sizeof(HPCON), nullptr,
+                    nullptr))
+            {
+                errorOut = "Failed to set pseudo console attribute";
+                DeleteProcThreadAttributeList(startupInfo.lpAttributeList);
+                cleanup();
+                return nullptr;
+            }
+
+            // Build the command line
+            std::string cmdLine = JoinCommandWindows(options.command);
+            std::wstring wCmdLine(cmdLine.begin(), cmdLine.end());
+
+            // Build environment block - inherit current environment and add custom vars
+            std::wstring envBlock;
+            if (!options.environment.empty())
+            {
+                // Get current environment and copy it
+                wchar_t* currentEnv = GetEnvironmentStringsW();
+                if (currentEnv != nullptr)
+                {
+                    // Environment block is double-null terminated, each var is null-terminated
+                    const wchar_t* ptr = currentEnv;
+                    while (*ptr != L'\0')
+                    {
+                        size_t len = wcslen(ptr);
+                        envBlock.append(ptr, len);
+                        envBlock += L'\0';
+                        ptr += len + 1;
+                    }
+                    FreeEnvironmentStringsW(currentEnv);
+                }
+
+                // Add custom environment variables
+                for (const auto& env : options.environment)
+                {
+                    std::wstring wEnv(env.begin(), env.end());
+                    envBlock += wEnv;
+                    envBlock += L'\0';
+                }
+                envBlock += L'\0';
+            }
+
+            // Convert working directory
+            std::wstring wWorkingDir;
+            if (!options.workingDirectory.empty())
+            {
+                wWorkingDir = std::wstring(options.workingDirectory.begin(), options.workingDirectory.end());
+            }
+
+            PROCESS_INFORMATION procInfo = {};
+            BOOL success = CreateProcessW(
+                nullptr, wCmdLine.data(),
+                nullptr, // Process security attributes
+                nullptr, // Thread security attributes
+                FALSE,   // Inherit handles
+                EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT,
+                options.environment.empty() ? nullptr : envBlock.data(),
+                wWorkingDir.empty() ? nullptr : wWorkingDir.c_str(), &startupInfo.StartupInfo, &procInfo);
+
+            DeleteProcThreadAttributeList(startupInfo.lpAttributeList);
+
+            if (!success)
+            {
+                DWORD error = GetLastError();
+                errorOut = "Failed to create process, error code: " + std::to_string(error);
+                cleanup();
+                return nullptr;
+            }
+
+            return std::make_unique<WindowsShellProcess>(
+                hPC, procInfo.hProcess, procInfo.hThread, hPipeInRead, hPipeOutWrite,
+                JoinCommandWindows(options.command));
+        }
+#endif
     } // namespace
 
     bool ShellProcess::Write(std::string_view text)
@@ -311,8 +667,10 @@ namespace OpenRCT2::Terminal
     {
 #if defined(__APPLE__) || defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
         return LaunchPosixProcess(options, errorOut);
+#elif defined(_WIN32)
+        return LaunchWindowsProcess(options, errorOut);
 #else
-        errorOut = "Agent terminal is only supported on POSIX builds right now.";
+        errorOut = "Agent terminal is not supported on this platform.";
         return nullptr;
 #endif
     }
