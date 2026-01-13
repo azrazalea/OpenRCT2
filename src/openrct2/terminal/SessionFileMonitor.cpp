@@ -544,7 +544,11 @@ namespace OpenRCT2::Terminal
     std::filesystem::path SessionFileMonitor::GetClaudeProjectsDir()
     {
         // Claude stores projects in ~/.claude/projects/
+#if defined(_WIN32)
+        const char* homeDir = std::getenv("USERPROFILE");
+#else
         const char* homeDir = std::getenv("HOME");
+#endif
         if (!homeDir)
         {
             return {};
@@ -560,21 +564,37 @@ namespace OpenRCT2::Terminal
         // 3. Replacing all / with -
         // 4. Replacing all spaces with -
         // Example: /Users/foo/Library/Application Support/bar -> -Users-foo-Library-Application-Support-bar
+        // Windows: C:\Users\foo\bar -> -C-Users-foo-bar
 
         std::string pathStr = workspacePath.string();
 
         // Ensure we have an absolute path
+#if defined(_WIN32)
+        // Windows: check for drive letter (e.g., C:\)
+        if (pathStr.size() < 2 || pathStr[1] != ':')
+        {
+            std::error_code ec;
+            pathStr = std::filesystem::absolute(workspacePath, ec).string();
+        }
+        // Remove drive letter colon (C: -> C) and add leading dash
+        if (pathStr.size() >= 2 && pathStr[1] == ':')
+        {
+            pathStr = "-" + pathStr.substr(0, 1) + pathStr.substr(2);
+        }
+        // Replace backslashes with -
+        std::replace(pathStr.begin(), pathStr.end(), '\\', '-');
+#else
         if (!pathStr.empty() && pathStr[0] != '/')
         {
             std::error_code ec;
             pathStr = std::filesystem::absolute(workspacePath, ec).string();
         }
-
         // Replace leading / with -
         if (!pathStr.empty() && pathStr[0] == '/')
         {
             pathStr[0] = '-';
         }
+#endif
 
         // Replace remaining / with -
         std::replace(pathStr.begin(), pathStr.end(), '/', '-');

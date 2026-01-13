@@ -10,11 +10,17 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#if defined(_WIN32) && !defined(ssize_t)
+    #include <BaseTsd.h>
+    using ssize_t = SSIZE_T;
+#endif
 
 namespace OpenRCT2::Terminal
 {

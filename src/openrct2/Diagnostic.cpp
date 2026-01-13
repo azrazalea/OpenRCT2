@@ -15,6 +15,7 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <ctime>
 
 #ifdef __ANDROID__
     #include <android/log.h>

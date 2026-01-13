@@ -20,6 +20,12 @@
 #include "../Diagnostic.h"
 #include "../platform/Platform.h"
 
+// Windows uses _popen/_pclose instead of popen/pclose
+#ifdef _WIN32
+    #define popen _popen
+    #define pclose _pclose
+#endif
+
 namespace OpenRCT2::Terminal
 {
     namespace
@@ -91,13 +97,22 @@ namespace OpenRCT2::Terminal
                 return false;
             }
 
-            // Find python3
+            // Find python
+#if defined(_WIN32)
+            std::string python = "python";
+            if (std::system("where python >nul 2>&1") != 0)
+            {
+                LOG_WARNING("SessionLogGenerator: python not found");
+                return false;
+            }
+#else
             std::string python = "python3";
             if (std::system("command -v python3 >/dev/null 2>&1") != 0)
             {
                 LOG_WARNING("SessionLogGenerator: python3 not found");
                 return false;
             }
+#endif
 
             // Run the markdown converter with the input path (file or directory)
             std::string command = python + " \"" + scriptPath->string() + "\" \"" +
@@ -113,7 +128,7 @@ namespace OpenRCT2::Terminal
 
             std::array<char, 256> buffer;
             std::string cmdOutput;
-            while (fgets(buffer.data(), buffer.size(), pipe) != nullptr)
+            while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr)
             {
                 cmdOutput += buffer.data();
             }
@@ -177,12 +192,21 @@ namespace OpenRCT2::Terminal
                 return false;
             }
 
+#if defined(_WIN32)
+            std::string python = "python";
+            if (std::system("where python >nul 2>&1") != 0)
+            {
+                LOG_WARNING("SessionLogGenerator: python not found");
+                return false;
+            }
+#else
             std::string python = "python3";
             if (std::system("command -v python3 >/dev/null 2>&1") != 0)
             {
                 LOG_WARNING("SessionLogGenerator: python3 not found");
                 return false;
             }
+#endif
 
             std::string command = python + " \"" + scriptPath->string() + "\" \"" +
                 markdownPath.string() + "\" -o \"" + outputPath.string() + "\" 2>&1";
@@ -197,7 +221,7 @@ namespace OpenRCT2::Terminal
 
             std::array<char, 256> buffer;
             std::string cmdOutput;
-            while (fgets(buffer.data(), buffer.size(), pipe) != nullptr)
+            while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr)
             {
                 cmdOutput += buffer.data();
             }
@@ -383,7 +407,11 @@ namespace OpenRCT2::Terminal
         // Fallback: user's home directory
         if (logsDir.empty())
         {
+#if defined(_WIN32)
+            const char* home = std::getenv("USERPROFILE");
+#else
             const char* home = std::getenv("HOME");
+#endif
             if (home)
             {
                 logsDir = std::filesystem::path(home) / "OpenRCT2-agent-logs";
@@ -405,7 +433,11 @@ namespace OpenRCT2::Terminal
         const std::filesystem::path& workspacePath)
     {
         // Claude stores projects in ~/.claude/projects/-{workspace-path-with-dashes}
+#if defined(_WIN32)
+        const char* home = std::getenv("USERPROFILE");
+#else
         const char* home = std::getenv("HOME");
+#endif
         if (!home)
         {
             return std::nullopt;
@@ -418,19 +450,27 @@ namespace OpenRCT2::Terminal
         }
 
         // Convert workspace path to project dir name
-        // e.g., /Users/foo/.openrct2-agent
-        // becomes -Users-foo-.openrct2-agent
+        // e.g., /Users/foo/.openrct2-agent -> -Users-foo--openrct2-agent
+        // e.g., C:\Users\foo\.openrct2-agent -> -C-Users-foo--openrct2-agent
         std::string workspaceStr = workspacePath.string();
-        if (workspaceStr.front() == '/')
+#if defined(_WIN32)
+        // Remove drive letter colon (C: -> C)
+        if (workspaceStr.length() >= 2 && workspaceStr[1] == ':')
+        {
+            workspaceStr = workspaceStr[0] + workspaceStr.substr(2);
+        }
+#else
+        if (!workspaceStr.empty() && workspaceStr.front() == '/')
         {
             workspaceStr = workspaceStr.substr(1);
         }
+#endif
         std::string projectDirName = "-";
         for (char c : workspaceStr)
         {
-            if (c == '/' || c == ' ' || c == '.')
+            if (c == '/' || c == '\\' || c == ' ' || c == '.')
             {
-                // Claude converts slashes, spaces, and dots to dashes in project dir names
+                // Claude converts slashes, backslashes, spaces, and dots to dashes in project dir names
                 projectDirName += '-';
             }
             else

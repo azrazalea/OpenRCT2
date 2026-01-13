@@ -22,6 +22,7 @@ namespace OpenRCT2::Terminal
         std::string error;
         bool usesAgent = false;
         bool available = false;
+        bool launchExternal = false;  // Windows: launch in separate console window
     };
 
     AIAgentLaunchPlan BuildAIAgentLaunchPlan(int cols, int rows);
