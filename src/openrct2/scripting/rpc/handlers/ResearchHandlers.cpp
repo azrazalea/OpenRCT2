@@ -845,7 +845,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::ParkSetResearchFundingAction(priorities, funding);
             auto result = GameActions::Execute(&action, gameState);
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -952,7 +952,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::ParkMarketingAction(*typeValue, item, weeks);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }

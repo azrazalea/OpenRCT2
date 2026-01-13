@@ -374,10 +374,10 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
         json_t BuildActionSuccessPayload(const GameActions::Result& result)
         {
             json_t payload = json_t::object();
-            payload["status"] = GameActionStatusToString(result.Error);
-            payload["cost"] = MoneyToDouble(result.Cost);
+            payload["status"] = GameActionStatusToString(result.error);
+            payload["cost"] = MoneyToDouble(result.cost);
             json_t position = json_t::object();
-            auto coords = result.Position;
+            auto coords = result.position;
             position["x"] = coords.x;
             position["y"] = coords.y;
             position["z"] = coords.z;
@@ -397,9 +397,9 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             }
             position["tile"] = tile;
             payload["position"] = position;
-            if (result.Expenditure != ExpenditureType::count)
+            if (result.expenditure != ExpenditureType::count)
             {
-                payload["expenditure"] = static_cast<int32_t>(result.Expenditure);
+                payload["expenditure"] = static_cast<int32_t>(result.expenditure);
             }
             return payload;
         }
@@ -765,12 +765,12 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto action = GameActions::StaffHireNewAction(autoPlace, *staffType, costumeIndex, orders);
             // Use ExecuteNested to bypass queueing and get immediate result with valid entity ID
             auto result = GameActions::ExecuteNested(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
 
-            auto hireResult = result.GetData<GameActions::StaffHireNewActionResult>();
+            auto hireResult = result.getData<GameActions::StaffHireNewActionResult>();
             Staff* newestStaff = nullptr;
             if (!hireResult.StaffEntityId.IsNull())
             {
@@ -863,7 +863,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::StaffFireAction(staff->Id);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -942,7 +942,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::StaffSetOrdersAction(staff->Id, desiredOrders);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -1034,7 +1034,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::StaffSetPatrolAreaAction(staff->Id, range, *mode);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -1120,7 +1120,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             GameActions::PeepPickupAction pickupAction{
                 GameActions::PeepPickupType::Pickup, staff->Id, nullLoc, Network::GetCurrentPlayerId() };
             auto result = GameActions::Execute(&pickupAction, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -1173,7 +1173,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             GameActions::PeepPickupAction cancelAction{
                 GameActions::PeepPickupType::Cancel, staff->Id, restoreLoc, playerId };
             auto result = GameActions::Execute(&cancelAction, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -1227,7 +1227,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             GameActions::PeepPickupAction placeAction{
                 GameActions::PeepPickupType::Place, staff->Id, coords, Network::GetCurrentPlayerId() };
             auto result = GameActions::Execute(&placeAction, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }

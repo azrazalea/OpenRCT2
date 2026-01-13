@@ -243,7 +243,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::ParkSetLoanAction(desiredLoan);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }

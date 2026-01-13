@@ -864,8 +864,8 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
         json_t BuildActionSuccessPayload(const GameActions::Result& result)
         {
             json_t payload = json_t::object();
-            payload["status"] = GameActionStatusToString(result.Error);
-            payload["cost"] = MoneyToDouble(result.Cost);
+            payload["status"] = GameActionStatusToString(result.error);
+            payload["cost"] = MoneyToDouble(result.cost);
             return payload;
         }
 
@@ -1134,12 +1134,12 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
                 json_t payload = json_t::object();
                 payload["dryRun"] = true;
-                payload["feasible"] = (createQueryResult.Error == GameActions::Status::Ok);
+                payload["feasible"] = (createQueryResult.error == GameActions::Status::ok);
 
-                if (createQueryResult.Error == GameActions::Status::Ok)
+                if (createQueryResult.error == GameActions::Status::ok)
                 {
                     payload["status"] = "ok";
-                    payload["estimatedCost"] = MoneyToDouble(createQueryResult.Cost);
+                    payload["estimatedCost"] = MoneyToDouble(createQueryResult.cost);
                     payload["message"] = "Placement would succeed. Cost is an estimate; actual cost may vary slightly.";
                 }
                 else
@@ -1181,19 +1181,19 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto rideCreate = GameActions::RideCreateAction(
                 shopInfo->rideType, shopInfo->entryIndex, colour1, colour2, gameState.lastEntranceStyle);
             auto createResult = GameActions::ExecuteNested(&rideCreate, gameState);
-            if (createResult.Error != GameActions::Status::Ok)
+            if (createResult.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(-32000, BuildGameActionErrorMessage(createResult));
             }
 
-            RideId rideId = createResult.GetData<RideId>();
+            RideId rideId = createResult.getData<RideId>();
 
             SelectedLiftAndInverted liftFlags{};
             CoordsXYZD origin{ coords.x, coords.y, *placementHeight, direction };
             auto trackAction = GameActions::TrackPlaceAction(
                 rideId, shopInfo->descriptor->StartTrackPiece, shopInfo->rideType, origin, 0, 0, 0, liftFlags, false);
             auto placeResult = GameActions::ExecuteNested(&trackAction, gameState);
-            if (placeResult.Error != GameActions::Status::Ok)
+            if (placeResult.error != GameActions::Status::ok)
             {
                 auto demolish = GameActions::RideDemolishAction(rideId, GameActions::RideModifyType::demolish);
                 GameActions::Execute(&demolish, gameState);
@@ -1206,7 +1206,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 return RpcResult::Error(-32000, detailedMessage);
             }
 
-            money64 totalCost = createResult.Cost + placeResult.Cost;
+            money64 totalCost = createResult.cost + placeResult.cost;
             auto* ride = GetRide(rideId);
 
             // Automatically open the shop after placement
@@ -1214,12 +1214,12 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto openResult = GameActions::ExecuteNested(&openAction, gameState);
 
             json_t payload = json_t::object();
-            payload["status"] = GameActionStatusToString(placeResult.Error);
+            payload["status"] = GameActionStatusToString(placeResult.error);
             payload["cost"] = MoneyToDouble(totalCost);
 
             json_t costBreakdown = json_t::object();
-            costBreakdown["create"] = MoneyToDouble(createResult.Cost);
-            costBreakdown["build"] = MoneyToDouble(placeResult.Cost);
+            costBreakdown["create"] = MoneyToDouble(createResult.cost);
+            costBreakdown["build"] = MoneyToDouble(placeResult.cost);
             payload["costBreakdown"] = costBreakdown;
 
             json_t tileNode = json_t::object();
@@ -1289,7 +1289,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             json_t rideSnapshot = BuildRidePayload(*rideLookup->ride);
             auto action = GameActions::RideDemolishAction(rideLookup->id, GameActions::RideModifyType::demolish);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(-32000, BuildGameActionErrorMessage(result));
             }
@@ -1367,7 +1367,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             const auto previousStatus = rideLookup->ride->status;
             auto action = GameActions::RideSetStatusAction(rideLookup->id, desiredStatus.value());
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(-32000, BuildGameActionErrorMessage(result));
             }
@@ -1506,7 +1506,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::RideSetPriceAction(rideLookup->id, newPrice, !secondary);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(-32000, BuildGameActionErrorMessage(result));
             }

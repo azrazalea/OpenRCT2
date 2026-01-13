@@ -2227,8 +2227,9 @@ namespace OpenRCT2::Ui::Windows
 
         const uint8_t foreground = TerminalPaletteMapper::Instance().Map(cell.foregroundRgb);
         TextDrawInfo drawInfo{};
-        drawInfo.palette[1] = foreground;
-        drawInfo.palette[3] = foreground;
+        drawInfo.palette.fill = static_cast<PaletteIndex>(foreground);
+        drawInfo.palette.sunnyOutline = static_cast<PaletteIndex>(foreground);
+        drawInfo.palette.shadowOutline = static_cast<PaletteIndex>(foreground);
 
         const int32_t glyphWidth = surface->w;
         const int32_t glyphHeight = surface->h;
