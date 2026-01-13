@@ -185,33 +185,33 @@ namespace OpenRCT2::Scripting::Rpc
         using GameActions::Status;
         switch (status)
         {
-            case Status::Ok:
+            case Status::ok:
                 return "ok";
-            case Status::InvalidParameters:
+            case Status::invalidParameters:
                 return "invalidParameters";
-            case Status::Disallowed:
+            case Status::disallowed:
                 return "disallowed";
-            case Status::GamePaused:
+            case Status::gamePaused:
                 return "gamePaused";
-            case Status::InsufficientFunds:
+            case Status::insufficientFunds:
                 return "insufficientFunds";
-            case Status::NotInEditorMode:
+            case Status::notInEditorMode:
                 return "notInEditor";
-            case Status::NotOwned:
+            case Status::notOwned:
                 return "notOwned";
-            case Status::TooLow:
+            case Status::tooLow:
                 return "tooLow";
-            case Status::TooHigh:
+            case Status::tooHigh:
                 return "tooHigh";
-            case Status::NoClearance:
+            case Status::noClearance:
                 return "noClearance";
-            case Status::ItemAlreadyPlaced:
+            case Status::itemAlreadyPlaced:
                 return "itemAlreadyPlaced";
-            case Status::NotClosed:
+            case Status::notClosed:
                 return "notClosed";
-            case Status::Broken:
+            case Status::broken:
                 return "broken";
-            case Status::NoFreeElements:
+            case Status::noFreeElements:
                 return "noFreeElements";
             default:
                 return "unknown";
@@ -220,8 +220,8 @@ namespace OpenRCT2::Scripting::Rpc
 
     std::string BuildGameActionErrorMessage(const GameActions::Result& result)
     {
-        std::string message = result.GetErrorMessage();
-        std::string title = result.GetErrorTitle();
+        std::string message = result.getErrorMessage();
+        std::string title = result.getErrorTitle();
 
         if (!title.empty())
         {
@@ -237,7 +237,7 @@ namespace OpenRCT2::Scripting::Rpc
 
         if (message.empty())
         {
-            message = "Game action failed (" + std::string(GameActionStatusToString(result.Error)) + ")";
+            message = "Game action failed (" + std::string(GameActionStatusToString(result.error)) + ")";
         }
         return message;
     }
@@ -270,12 +270,12 @@ namespace OpenRCT2::Scripting::Rpc
     json_t BuildActionSuccessPayload(const GameActions::Result& result)
     {
         json_t payload = json_t::object();
-        payload["status"] = GameActionStatusToString(result.Error);
-        payload["cost"] = MoneyToDouble(result.Cost);
-        payload["position"] = BuildPositionPayload(result.Position);
-        if (result.Expenditure != ExpenditureType::count)
+        payload["status"] = GameActionStatusToString(result.error);
+        payload["cost"] = MoneyToDouble(result.cost);
+        payload["position"] = BuildPositionPayload(result.position);
+        if (result.expenditure != ExpenditureType::count)
         {
-            payload["expenditure"] = static_cast<int32_t>(result.Expenditure);
+            payload["expenditure"] = static_cast<int32_t>(result.expenditure);
         }
         return payload;
     }

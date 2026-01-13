@@ -1881,7 +1881,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             CoordsXYZD loc{ coords.x, coords.y, zCoord, 0 };
             auto action = GameActions::SmallSceneryPlaceAction(loc, 0, entryIndexOpt.value(), 0, 0, 0);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -1982,7 +1982,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             CoordsXYZD loc{ coords.x, coords.y, zCoord, direction };
             auto action = GameActions::SmallSceneryPlaceAction(loc, quadrant, entryIndexOpt.value(), primaryColour, secondaryColour, 0);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2091,7 +2091,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             CoordsXYZ loc{ coords.x, coords.y, zCoord };
             auto action = GameActions::FootpathAdditionPlaceAction(loc, entryIndexOpt.value());
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2174,7 +2174,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             CoordsXYZ loc{ coords.x, coords.y, zCoord };
             auto action = GameActions::FootpathAdditionRemoveAction(loc);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2411,7 +2411,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto action = GameActions::FootpathPlaceAction(
                 location, slope, surfaceSelection->entryIndex, railingsIndex, kInvalidDirection, constructFlags);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2529,7 +2529,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto action = GameActions::ClearAction(range, GameActions::CLEARABLE_ITEMS::kSceneryFootpath);
             auto result = GameActions::Execute(&action, getGameState());
 
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2542,7 +2542,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             payload["tile"] = tileObj;
             payload["height"] = foundZ;
             payload["queue"] = isQueue;
-            payload["cost"] = static_cast<double>(result.Cost) / 10.0; // Convert to currency display format
+            payload["cost"] = static_cast<double>(result.cost) / 10.0; // Convert to currency display format
 
             if (!surfaceName.empty())
             {
@@ -2646,7 +2646,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 result = GameActions::Execute(&action, getGameState());
             }
 
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2730,7 +2730,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 result = GameActions::Execute(&action, getGameState());
             }
 
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2827,7 +2827,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto action = GameActions::ClearAction(range, itemsToClear);
             auto result = GameActions::Execute(&action, getGameState());
 
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2838,7 +2838,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             payload["y"] = tile.y;
             payload["width"] = width;
             payload["height"] = height;
-            payload["cost"] = result.Cost;
+            payload["cost"] = result.cost;
 
             // Build filter description
             std::vector<std::string> clearedTypes;

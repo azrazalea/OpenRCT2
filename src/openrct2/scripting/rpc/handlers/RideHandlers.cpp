@@ -17,6 +17,7 @@
 #include "../../../Context.h"
 #include "../../../Diagnostic.h"
 #include "../../../GameState.h"
+#include "../../../actions/CommandFlag.h"
 #include "../../../actions/GameActionResult.h"
 #include "../../../actions/RideCreateAction.h"
 #include "../../../actions/RideDemolishAction.h"
@@ -676,7 +677,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
                     Direction relativeDir = (DirectionReverse(searchDir) - trackElement->GetDirection()) & 3;
                     const auto& ted = TrackMetaData::GetTrackElementDescriptor(trackElement->GetTrackType());
-                    if (ted.sequences[trackElement->GetSequenceIndex()].flags & (1 << relativeDir))
+                    if (ted.sequences[trackElement->GetSequenceIndex()].getEntranceConnectionSides() & (1 << relativeDir))
                     {
                         return DirectionReverse(searchDir);
                     }
@@ -2225,7 +2226,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             const auto previousStatus = rideLookup->ride->status;
             auto action = GameActions::RideSetStatusAction(rideLookup->id, desiredStatus.value());
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2308,7 +2309,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::RideSetPriceAction(rideLookup->id, newPrice, !secondary);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2365,7 +2366,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             hint.requestWindowFocus = false;
             auto action = GameActions::RideDemolishAction(rideLookup->id, *modifyType);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2407,7 +2408,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             const std::string previousName = rideLookup->ride->getName();
             auto action = GameActions::RideSetNameAction(rideLookup->id, *newNameParam);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -2451,7 +2452,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto execSetting = [&](RideSetSetting setting, uint8_t value) -> bool {
                 auto action = GameActions::RideSetSettingAction(rideLookup->id, setting, value);
                 lastResult = GameActions::Execute(&action, getGameState());
-                if (lastResult.Error != GameActions::Status::Ok)
+                if (lastResult.error != GameActions::Status::ok)
                 {
                     return false;
                 }
@@ -3003,12 +3004,12 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
                 json_t payload = json_t::object();
                 payload["dryRun"] = true;
-                payload["feasible"] = (createQueryResult.Error == GameActions::Status::Ok);
+                payload["feasible"] = (createQueryResult.error == GameActions::Status::ok);
 
-                if (createQueryResult.Error == GameActions::Status::Ok)
+                if (createQueryResult.error == GameActions::Status::ok)
                 {
                     payload["status"] = "ok";
-                    payload["estimatedCost"] = MoneyToDouble(createQueryResult.Cost);
+                    payload["estimatedCost"] = MoneyToDouble(createQueryResult.cost);
                     payload["message"] = "Placement would succeed. Cost is an estimate; actual cost may vary slightly.";
                 }
                 else
@@ -3051,18 +3052,18 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto rideCreate = GameActions::RideCreateAction(
                 blueprint->rideType, blueprint->entryIndex, colour1, colour2, gameState.lastEntranceStyle);
             auto createResult = GameActions::ExecuteNested(&rideCreate, gameState);
-            if (createResult.Error != GameActions::Status::Ok)
+            if (createResult.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(createResult));
             }
 
-            RideId rideId = createResult.GetData<RideId>();
+            RideId rideId = createResult.getData<RideId>();
             SelectedLiftAndInverted liftFlags{};
             CoordsXYZD origin{ coords.x, coords.y, *placementHeight, direction };
             auto trackAction = GameActions::TrackPlaceAction(
                 rideId, blueprint->descriptor->StartTrackPiece, blueprint->rideType, origin, 0, 0, 0, liftFlags, false);
             auto placeResult = GameActions::ExecuteNested(&trackAction, gameState);
-            if (placeResult.Error != GameActions::Status::Ok)
+            if (placeResult.error != GameActions::Status::ok)
             {
                 auto demolish = GameActions::RideDemolishAction(rideId, GameActions::RideModifyType::demolish);
                 GameActions::Execute(&demolish, gameState);
@@ -3075,15 +3076,15 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 return RpcResult::Error(kErrorServerError, "Ride data unavailable after placement");
             }
 
-            money64 totalCost = createResult.Cost + placeResult.Cost;
+            money64 totalCost = createResult.cost + placeResult.cost;
 
             json_t payload = json_t::object();
-            payload["status"] = GameActionStatusToString(placeResult.Error);
+            payload["status"] = GameActionStatusToString(placeResult.error);
             payload["cost"] = MoneyToDouble(totalCost);
 
             json_t costBreakdown = json_t::object();
-            costBreakdown["create"] = MoneyToDouble(createResult.Cost);
-            costBreakdown["build"] = MoneyToDouble(placeResult.Cost);
+            costBreakdown["create"] = MoneyToDouble(createResult.cost);
+            costBreakdown["build"] = MoneyToDouble(placeResult.cost);
             payload["costBreakdown"] = costBreakdown;
             payload["ride"] = BuildRidePayload(*ride);
 
@@ -3213,7 +3214,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto action = GameActions::RideEntranceExitPlaceAction(
                 coords, actionDirection, rideLookup->id, stationIndex, isExit);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -3715,7 +3716,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             // Execute the action in query mode
             auto action = GameActions::TrackDesignAction(location, trackDesign, false);
-            action.SetFlags(GAME_COMMAND_FLAG_NO_SPEND); // Query only
+            action.SetFlags({ GameActions::CommandFlag::noSpend }); // Query only
             auto result = GameActions::Query(&action, gameState);
 
             json_t payload = json_t::object();
@@ -3767,13 +3768,13 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             placement["z"] = zParam;
             placement["zAutoDetected"] = !zExplicit;
             placement["direction"] = directionParam;
-            placement["cost"] = MoneyToDouble(result.Cost);
-            placement["canPlace"] = result.Error == GameActions::Status::Ok;
+            placement["cost"] = MoneyToDouble(result.cost);
+            placement["canPlace"] = result.error == GameActions::Status::ok;
 
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
-                placement["errorMessage"] = result.GetErrorMessage();
-                std::string errMsg = result.GetErrorMessage();
+                placement["errorMessage"] = result.getErrorMessage();
+                std::string errMsg = result.getErrorMessage();
 
                 // Provide targeted height suggestions based on error type
                 if (errMsg.find("Too high") != std::string::npos || errMsg.find("too high") != std::string::npos)
@@ -3931,9 +3932,9 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             auto action = GameActions::TrackDesignAction(location, trackDesign, placeScenery);
             auto result = GameActions::Execute(&action, gameState);
 
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
-                std::string errorMsg = result.GetErrorMessage();
+                std::string errorMsg = result.getErrorMessage();
                 // Add targeted hint based on error type
                 std::string hint;
                 if (errorMsg.find("Too high") != std::string::npos || errorMsg.find("too high") != std::string::npos)
@@ -3964,7 +3965,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             }
 
             // Get the created ride
-            auto rideId = result.GetData<RideId>();
+            auto rideId = result.getData<RideId>();
             auto* ride = GetRide(rideId);
             if (ride == nullptr)
             {
@@ -3983,7 +3984,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             json_t payload = json_t::object();
             payload["status"] = "ok";
-            payload["cost"] = MoneyToDouble(result.Cost);
+            payload["cost"] = MoneyToDouble(result.cost);
 
             // Ride info - even if ride lookup failed, the coaster was placed successfully
             json_t rideInfo = json_t::object();
@@ -4168,7 +4169,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 auto action = GameActions::RideSetAppearanceAction(
                     rideLookup->id, type, static_cast<uint16_t>(value), static_cast<uint32_t>(schemeIndex));
                 auto result = GameActions::Execute(&action, getGameState());
-                return result.Error == GameActions::Status::Ok;
+                return result.error == GameActions::Status::ok;
             };
 
             // Process main color
@@ -4258,7 +4259,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 auto action = GameActions::RideSetAppearanceAction(
                     rideLookup->id, type, static_cast<uint16_t>(value), static_cast<uint32_t>(trainIndex));
                 auto result = GameActions::Execute(&action, getGameState());
-                return result.Error == GameActions::Status::Ok;
+                return result.error == GameActions::Status::ok;
             };
 
             // Process body color
@@ -4343,7 +4344,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 rideLookup->id, GameActions::RideSetAppearanceType::VehicleColourScheme,
                 static_cast<uint16_t>(*modeVal), 0);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -4394,7 +4395,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 rideLookup->id, GameActions::RideSetAppearanceType::EntranceStyle,
                 static_cast<uint16_t>(*styleVal), 0);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }

@@ -865,7 +865,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                                                                 : GameActions::ParkParameter::Close;
             GameActions::ParkSetParameterAction action(mode);
             auto result = GameActions::Execute(&action, gameState);
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -904,7 +904,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             GameActions::ParkSetEntranceFeeAction action(fee);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -979,7 +979,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             auto action = GameActions::CheatSetAction(descriptor->type, *valueParam ? 1 : 0);
             auto result = GameActions::Execute(&action, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }

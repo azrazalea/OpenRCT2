@@ -1352,7 +1352,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             GameActions::PeepPickupAction pickupAction{
                 GameActions::PeepPickupType::Pickup, guest->Id, nullLoc, Network::GetCurrentPlayerId() };
             auto result = GameActions::Execute(&pickupAction, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -1406,7 +1406,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             GameActions::PeepPickupAction placeAction{
                 GameActions::PeepPickupType::Place, guest->Id, coords, Network::GetCurrentPlayerId() };
             auto result = GameActions::Execute(&placeAction, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
@@ -1460,7 +1460,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             GameActions::PeepPickupAction cancelAction{
                 GameActions::PeepPickupType::Cancel, guest->Id, restoreLoc, playerId };
             auto result = GameActions::Execute(&cancelAction, getGameState());
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 return RpcResult::Error(kErrorActionFailed, BuildGameActionErrorMessage(result));
             }
