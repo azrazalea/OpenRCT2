@@ -21,30 +21,10 @@ void AppendResearchMarketingCommands(std::vector<CommandSpec>& specs)
         "research",
         { "status" },
         "Show research status.",
-        "Displays funding level, progress, upcoming discoveries, and category priorities.",
-        { CommandArgSpec{ "queue-limit", "Limit items shown from the queue.", false, "INT" },
-          CommandArgSpec{ "queue-category", "Comma list of queue categories to include.", false, "LIST" },
-          CommandArgSpec{ "queue-order", "Order queue by scenario, name, or category.", false, "FIELD" },
-          CommandArgSpec{ "queue-direction", "Sort order asc/desc (ignored for scenario order).", false, "DIR" } },
-        [](const ParsedArgs& args) {
-            json params = json::object();
-            if (auto limit = cli::GetIntOption(args, { "queue-limit", "queueLimit" }))
-            {
-                params["queueLimit"] = *limit;
-            }
-            if (auto categories = cli::GetStringOption(args, { "queue-category", "queueCategories" }))
-            {
-                params["queueCategories"] = cli::SplitCommaSeparated(*categories);
-            }
-            if (auto order = cli::GetStringOption(args, { "queue-order", "queueOrder" }))
-            {
-                params["queueOrder"] = *order;
-            }
-            if (auto direction = cli::GetStringOption(args, { "queue-direction", "queueDirection" }))
-            {
-                params["queueDirection"] = *direction;
-            }
-            return CommandPlan{ "research.status", params };
+        "Displays funding level, current research progress, and category priorities. Shows what a player would see in the research window - current item visibility depends on progress stage.",
+        {},
+        [](const ParsedArgs&) {
+            return CommandPlan{ "research.status", json::object() };
         },
         renderers::RenderResearchStatus });
 

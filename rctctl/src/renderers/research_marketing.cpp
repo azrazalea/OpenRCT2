@@ -10,59 +10,35 @@ namespace rctctl::renderers {
 namespace {
 using json = nlohmann::json;
 
-std::string FormatPercent(double value)
+std::string DescribeStage(const json& stageValue)
 {
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(1) << value << "%";
-    return oss.str();
-}
-
-double ExtractProgressPercent(const json& result)
-{
-    if (auto it = result.find("progressPercent"); it != result.end() && it->is_number())
+    // Handle both string format (new) and numeric format (old/compatibility)
+    if (stageValue.is_string())
     {
-        return it->get<double>();
-    }
-    double raw = result.value("progress", 0.0);
-    int stage = result.value("progressStage", 0);
-    if (stage == 4)
-    {
-        return 100.0;
-    }
-    if (stage == 0)
-    {
-        return 0.0;
-    }
-    constexpr double kProgressUnits = 65535.0;
-    double percent = (raw / kProgressUnits) * 100.0;
-    if (percent < 0.0)
-    {
-        percent = 0.0;
-    }
-    if (percent > 100.0)
-    {
-        percent = 100.0;
-    }
-    return percent;
-}
-
-const char* DescribeStage(int stage)
-{
-    switch (stage)
-    {
-        case 0:
+        std::string stage = stageValue.get<std::string>();
+        if (stage == "initialResearch")
             return "Initial research";
-        case 1:
+        if (stage == "designing")
             return "Designing";
-        case 2:
+        if (stage == "completingDesign")
             return "Completing design";
-        case 3:
-            return "Unknown";
-        case 4:
-            return "Finished";
-        default:
-            return "Unknown";
+        if (stage == "allComplete")
+            return "All complete";
+        return "Unknown";
     }
+    if (stageValue.is_number())
+    {
+        int stage = stageValue.get<int>();
+        switch (stage)
+        {
+            case 0: return "Initial research";
+            case 1: return "Designing";
+            case 2: return "Completing design";
+            case 255: return "All complete";
+            default: return "Unknown";
+        }
+    }
+    return "Unknown";
 }
 }
 
@@ -71,8 +47,12 @@ void RenderResearchStatus(const json& result)
     TextCanvas canvas(std::cout);
     canvas.Section("Research");
     canvas.KeyValue("Funding", result.value("fundingLevel", std::string("")));
-    canvas.KeyValue("Stage", DescribeStage(result.value("progressStage", 0)));
-    canvas.KeyValue("Progress", FormatPercent(ExtractProgressPercent(result)));
+
+    auto stageIt = result.find("progressStage");
+    if (stageIt != result.end())
+    {
+        canvas.KeyValue("Stage", DescribeStage(*stageIt));
+    }
 
     const auto& priorities = result.value("priorities", json::object());
     if (!priorities.empty())
@@ -89,10 +69,46 @@ void RenderResearchStatus(const json& result)
         }
     }
 
+    // Current research - what we show depends on visibility stage
     if (auto nextIt = result.find("next"); nextIt != result.end())
     {
-        canvas.KeyValue("Next discovery", nextIt->value("name", std::string("")));
+        const auto& next = *nextIt;
+        std::string status = next.value("status", std::string(""));
+
+        if (status == "unknown")
+        {
+            canvas.KeyValue("Current research", "Unknown");
+        }
+        else if (status == "designing")
+        {
+            // Only category is visible
+            canvas.KeyValue("Current research", next.value("category", std::string("Unknown category")));
+        }
+        else if (status == "completingDesign")
+        {
+            // Full name is visible
+            std::string name = next.value("name", std::string(""));
+            std::string category = next.value("category", std::string(""));
+            if (!name.empty())
+            {
+                canvas.KeyValue("Current research", name + " (" + category + ")");
+            }
+            else
+            {
+                canvas.KeyValue("Current research", category);
+            }
+        }
     }
+
+    // Expected completion
+    if (result.contains("expectedMonth") && result.contains("expectedDay"))
+    {
+        std::ostringstream expected;
+        expected << "Day " << result.value("expectedDay", 0) << ", Month " << (result.value("expectedMonth", 0) + 1);
+        canvas.KeyValue("Expected", expected.str());
+    }
+
+    // Last completed research
     if (auto lastIt = result.find("last"); lastIt != result.end())
     {
         canvas.KeyValue("Last discovery", lastIt->value("name", std::string("")));
@@ -102,23 +118,12 @@ void RenderResearchStatus(const json& result)
     {
         canvas.Paragraph("All research complete.");
     }
-
-    if (auto queueIt = result.find("queue"); queueIt != result.end() && queueIt->is_array())
+    else
     {
-        const auto& queue = *queueIt;
-        if (!queue.empty())
+        int remaining = result.value("uninventedCount", 0);
+        if (remaining > 0)
         {
-            canvas.Section("Queue");
-            canvas.KeyValue("Entries", static_cast<int>(queue.size()));
-            TableView table;
-            table.headers = { "Name", "Category", "Type" };
-            for (const auto& entry : queue)
-            {
-                table.rows.push_back({ entry.value("name", std::string("")),
-                    entry.value("category", entry.value("categoryKey", std::string(""))),
-                    entry.value("type", std::string("")) });
-            }
-            canvas.Table(table);
+            canvas.KeyValue("Items remaining", remaining);
         }
     }
 }
