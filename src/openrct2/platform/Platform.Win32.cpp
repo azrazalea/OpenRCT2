@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -13,27 +13,27 @@
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif
-    #include "../Diagnostic.h"
-
-    #include <cassert>
+// clang-format off
     #include <windows.h>
-
-    // Then the rest
-    #include "../Version.h"
-
     #include <datetimeapi.h>
     #include <lmcons.h>
     #include <memory>
     #include <shlobj.h>
+    // clang-format on
     #undef GetEnvironmentVariable
+    #undef small
+
+    #include "Platform.h"
 
     #include "../Date.h"
+    #include "../Diagnostic.h"
     #include "../OpenRCT2.h"
+    #include "../Version.h"
     #include "../core/Path.hpp"
     #include "../core/String.hpp"
     #include "../localisation/Language.h"
-    #include "Platform.h"
 
+    #include <cassert>
     #include <cstring>
     #include <format>
     #include <iterator>
@@ -737,7 +737,7 @@ namespace OpenRCT2::Platform
         return isElevated;
     }
 
-    std::string GetSteamPath()
+    SteamPaths GetSteamPaths()
     {
         wchar_t* wSteamPath;
         HKEY hKey;
@@ -759,12 +759,18 @@ namespace OpenRCT2::Platform
         result = RegQueryValueExW(hKey, L"SteamPath", nullptr, &type, reinterpret_cast<LPBYTE>(wSteamPath), &size);
         if (result == ERROR_SUCCESS)
         {
-            auto utf8SteamPath = String::toUtf8(wSteamPath);
-            outPath = Path::Combine(utf8SteamPath, u8"steamapps", u8"common");
+            outPath = String::toUtf8(wSteamPath);
         }
         free(wSteamPath);
         RegCloseKey(hKey);
-        return outPath;
+
+        SteamPaths ret = {};
+        ret.roots.emplace_back(outPath);
+        ret.nativeFolder = "steamapps/common";
+        ret.downloadDepotFolder = "steamapps/content";
+        ret.manifests = "steamapps";
+
+        return ret;
     }
 
     std::string GetFontPath(const TTFFontDescriptor& font)
@@ -794,21 +800,6 @@ namespace OpenRCT2::Platform
     int32_t GetDrives()
     {
         return GetLogicalDrives();
-    }
-
-    u8string GetRCT1SteamDir()
-    {
-        return u8"Rollercoaster Tycoon Deluxe";
-    }
-
-    u8string GetRCT2SteamDir()
-    {
-        return u8"Rollercoaster Tycoon 2";
-    }
-
-    u8string GetRCTClassicSteamDir()
-    {
-        return u8"RollerCoaster Tycoon Classic";
     }
 
     time_t FileGetModifiedTime(u8string_view path)

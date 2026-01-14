@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -7,8 +7,11 @@
  * OpenRCT2 is licensed under the GNU General Public License version 3.
  *****************************************************************************/
 
+#include "Language.h"
+
 #include "../Context.h"
 #include "../core/String.hpp"
+#include "../drawing/ScrollingText.h"
 #include "../interface/FontFamilies.h"
 #include "../interface/Window.h"
 #include "../object/ObjectManager.h"
@@ -81,7 +84,7 @@ namespace OpenRCT2
             localisationService.OpenLanguage(id);
             // Objects and their localised strings need to be refreshed
             objectManager.ResetObjects();
-            ScrollingTextInvalidate();
+            Drawing::ScrollingText::invalidate();
             WindowNotifyLanguageChange();
             return true;
         }

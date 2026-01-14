@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -30,7 +30,9 @@
 #include <openrct2/core/EnumUtils.hpp>
 #include <openrct2/core/File.h>
 #include <openrct2/core/String.hpp>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/IDrawingEngine.h>
+#include <openrct2/drawing/ScrollingText.h>
 #include <openrct2/localisation/Currency.h>
 #include <openrct2/localisation/Formatter.h>
 #include <openrct2/localisation/Language.h>
@@ -627,7 +629,7 @@ namespace OpenRCT2::Ui::Windows
             CommonPrepareDrawAfter();
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -1018,7 +1020,7 @@ namespace OpenRCT2::Ui::Windows
             widgets[WIDX_FRAME_RATE_LIMIT].text = kFrameRateLimitStringIds[activeItem];
         }
 
-        void DisplayDraw(RenderTarget& rt)
+        void DisplayDraw(Drawing::RenderTarget& rt)
         {
             auto ft = Formatter();
             ft.Add<int32_t>(static_cast<int32_t>(Config::Get().general.windowScale * 100));
@@ -1072,7 +1074,7 @@ namespace OpenRCT2::Ui::Windows
                     Config::Get().general.upperCaseBanners ^= 1;
                     Config::Save();
                     invalidate();
-                    ScrollingTextInvalidate();
+                    Drawing::ScrollingText::invalidate();
                     break;
                 case WIDX_DISABLE_LIGHTNING_EFFECT_CHECKBOX:
                     Config::Get().general.disableLightningEffect ^= 1;
@@ -1802,8 +1804,8 @@ namespace OpenRCT2::Ui::Windows
                     }
 
                     WindowDropdownShowTextCustomWidth(
-                        { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height() + 1, colours[1], 0,
-                        Dropdown::Flag::StayOpen, numItems, widget->width() - 3);
+                        { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height(), colours[1], 0,
+                        Dropdown::Flag::StayOpen, numItems, widget->width() - 4);
 
                     gDropdown.items[static_cast<int32_t>(ThemeManagerGetAvailableThemeIndex())].setChecked(true);
                     invalidateWidget(WIDX_THEMES_DROPDOWN);
@@ -1916,7 +1918,7 @@ namespace OpenRCT2::Ui::Windows
                     numItems++;
 
                     WindowDropdownShowText(
-                        { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height() + 1, colours[1],
+                        { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height(), colours[1],
                         Dropdown::Flag::StayOpen, numItems);
 
                     auto selectedIndex = Config::Get().interface.randomTitleSequence
@@ -1933,8 +1935,8 @@ namespace OpenRCT2::Ui::Windows
                     gDropdown.items[1] = Dropdown::MenuLabel(STR_SCENARIO_PREVIEWS_SCREENSHOTS);
 
                     WindowDropdownShowTextCustomWidth(
-                        { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height() + 1, colours[1], 0,
-                        Dropdown::Flag::StayOpen, numItems, widget->width() - 3);
+                        { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height(), colours[1], 0,
+                        Dropdown::Flag::StayOpen, numItems, widget->width() - 4);
 
                     gDropdown.items[Config::Get().interface.scenarioPreviewScreenshots].setChecked(true);
                     break;
@@ -1946,7 +1948,8 @@ namespace OpenRCT2::Ui::Windows
                     }
 
                     ShowDropdown(widget, 7);
-                    gDropdown.items[Config::Get().general.defaultInspectionInterval].setChecked(true);
+                    auto selectedIndex = EnumValue(Config::Get().general.defaultInspectionInterval);
+                    gDropdown.items[selectedIndex].setChecked(true);
                     break;
             }
         }
@@ -1974,9 +1977,9 @@ namespace OpenRCT2::Ui::Windows
                     break;
                 }
                 case WIDX_DEFAULT_INSPECTION_INTERVAL_DROPDOWN:
-                    if (dropdownIndex != Config::Get().general.defaultInspectionInterval)
+                    if (dropdownIndex != EnumValue(Config::Get().general.defaultInspectionInterval))
                     {
-                        Config::Get().general.defaultInspectionInterval = static_cast<uint8_t>(dropdownIndex);
+                        Config::Get().general.defaultInspectionInterval = static_cast<RideInspection>(dropdownIndex);
                         Config::Save();
                         invalidate();
                     }
@@ -2039,8 +2042,8 @@ namespace OpenRCT2::Ui::Windows
 
             setCheckboxValue(WIDX_SCENARIO_UNLOCKING, Config::Get().general.scenarioUnlockingEnabled);
 
-            widgets[WIDX_DEFAULT_INSPECTION_INTERVAL].text = kRideInspectionIntervalNames
-                [Config::Get().general.defaultInspectionInterval];
+            auto selectedIndex = EnumValue(Config::Get().general.defaultInspectionInterval);
+            widgets[WIDX_DEFAULT_INSPECTION_INTERVAL].text = kRideInspectionIntervalNames[selectedIndex];
         }
 
 #pragma endregion
@@ -2223,10 +2226,10 @@ namespace OpenRCT2::Ui::Windows
             widgets[WIDX_ASSET_PACKS].bottom = widgets[WIDX_GROUP_ADVANCED].bottom - 6;
         }
 
-        void AdvancedDraw(RenderTarget& rt)
+        void AdvancedDraw(Drawing::RenderTarget& rt)
         {
             auto ft = Formatter();
-            ft.Add<int32_t>(static_cast<int32_t>(Config::Get().general.autosaveAmount));
+            ft.Add<int32_t>(Config::Get().general.autosaveAmount);
             DrawTextBasic(
                 rt, windowPos + ScreenCoordsXY{ widgets[WIDX_AUTOSAVE_AMOUNT].left + 1, widgets[WIDX_AUTOSAVE_AMOUNT].top + 1 },
                 STR_WINDOW_COLOUR_2_COMMA32, ft, { colours[1] });
@@ -2245,7 +2248,7 @@ namespace OpenRCT2::Ui::Windows
             int32_t padding = widgetHeight > lineHeight ? (widgetHeight - lineHeight) / 2 : 0;
 
             auto screenCoords = windowPos + ScreenCoordsXY{ pathWidget.left + 1, pathWidget.top + padding };
-            DrawTextEllipsised(rt, screenCoords, pathWidget.width(), STR_BLACK_STRING, ft);
+            DrawTextEllipsised(rt, screenCoords, pathWidget.width() - 1, STR_BLACK_STRING, ft);
         }
 
         OpenRCT2String AdvancedTooltip(WidgetIndex widgetIndex, StringId fallback)
@@ -2296,11 +2299,11 @@ namespace OpenRCT2::Ui::Windows
         {
             // helper function, all dropdown boxes have similar properties
             WindowDropdownShowTextCustomWidth(
-                { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height() + 1, colours[1], 0,
-                Dropdown::Flag::StayOpen, num_items, widget->width() - 3);
+                { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height(), colours[1], 0,
+                Dropdown::Flag::StayOpen, num_items, widget->width() - 4);
         }
 
-        void DrawTabImages(RenderTarget& rt)
+        void DrawTabImages(Drawing::RenderTarget& rt)
         {
             DrawTabImage(rt, WINDOW_OPTIONS_PAGE_DISPLAY, SPR_G2_MONITOR_TAB_START);
             DrawTabImage(rt, WINDOW_OPTIONS_PAGE_RENDERING, SPR_G2_TAB_TREE);
@@ -2312,7 +2315,7 @@ namespace OpenRCT2::Ui::Windows
             DrawTabImage(rt, WINDOW_OPTIONS_PAGE_ADVANCED, SPR_TAB_WRENCH_0);
         }
 
-        void DrawTabImage(RenderTarget& rt, int32_t p, int32_t spriteIndex)
+        void DrawTabImage(Drawing::RenderTarget& rt, int32_t p, int32_t spriteIndex)
         {
             WidgetIndex widgetIndex = WIDX_FIRST_TAB + p;
             Widget* widget = &widgets[widgetIndex];
@@ -2352,7 +2355,7 @@ namespace OpenRCT2::Ui::Windows
 
         uint8_t GetScrollPercentage(const Widget& widget, const ScrollArea& scroll)
         {
-            uint8_t w = widget.width() - 1;
+            uint8_t w = widget.width() - 2;
             return static_cast<float>(scroll.contentOffsetX) / (scroll.contentWidth - w) * 100;
         }
 
@@ -2361,7 +2364,7 @@ namespace OpenRCT2::Ui::Windows
             const auto& widget = widgets[widgetIndex];
             auto& scroll = scrolls[scrollId];
 
-            int32_t widgetSize = scroll.contentWidth - (widget.width() - 1);
+            int32_t widgetSize = scroll.contentWidth - (widget.width() - 2);
             scroll.contentOffsetX = ceil(volume / 100.0f * widgetSize);
 
             widgetScrollUpdateThumbs(*this, widgetIndex);

@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -171,46 +171,48 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             WindowDrawWidgets(*this, rt);
 
             auto& widget = widgets[WIDX_TITLE];
             auto screenCoords = windowPos + ScreenCoordsXY{ widget.left, widget.bottom + 1 };
 
-            RenderTarget clipDPI;
-            if (!ClipDrawPixelInfo(clipDPI, rt, screenCoords, width - 3, height - widget.bottom - 3))
+            Drawing::RenderTarget clipRT;
+            if (!ClipRenderTarget(clipRT, rt, screenCoords, width - 3, height - widget.bottom - 3))
                 return;
 
             auto& variant = kVehicleStyles[style];
 
             // Draw supports sprite -- twice, to fill the window
             auto trackCoords = ScreenCoordsXY{ widget.left, widget.bottom + 1 };
-            GfxDrawSprite(clipDPI, variant.supports, trackCoords);
-            GfxDrawSprite(clipDPI, variant.supports, trackCoords + ScreenCoordsXY(256, 0));
+            GfxDrawSprite(clipRT, variant.supports, trackCoords);
+            GfxDrawSprite(clipRT, variant.supports, trackCoords + ScreenCoordsXY(256, 0));
 
             // Draw track sprite -- twice, to fill the window
-            GfxDrawSprite(clipDPI, variant.track, trackCoords);
-            GfxDrawSprite(clipDPI, variant.track, trackCoords + ScreenCoordsXY(256, 0));
+            GfxDrawSprite(clipRT, variant.track, trackCoords);
+            GfxDrawSprite(clipRT, variant.track, trackCoords + ScreenCoordsXY(256, 0));
 
             // Figure out where to position the vehicle to indicate progress
             auto* vehicle = GfxGetG1Element(variant.vehicle);
             int16_t vehicleWidth = (vehicle != nullptr) ? vehicle->width : 0;
             int32_t position;
             if (_totalCount > 0)
-                position = (-vehicleWidth + 2) + width * _currentProgress / _totalCount;
+            {
+                const auto progress = static_cast<double>(_currentProgress) / _totalCount;
+                position = static_cast<int32_t>((-vehicleWidth + 2) + width * progress);
+            }
             else
+            {
                 position = (vehicleWidth + width) / 2;
+            }
 
-            GfxDrawSprite(clipDPI, variant.vehicle, ScreenCoordsXY(position, widget.bottom + 1));
+            GfxDrawSprite(clipRT, variant.vehicle, ScreenCoordsXY(position, widget.bottom + 1));
         }
 
         void setCaption(const std::string& text)
         {
             _progressTitle = text;
-            _currentProgress = 0;
-            _totalCount = 0;
-
             invalidate();
         }
 

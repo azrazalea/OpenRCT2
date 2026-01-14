@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -12,7 +12,7 @@
 #include "Window.h"
 
 #include <openrct2-ui/UiStringIds.h>
-#include <openrct2/drawing/Drawing.h>
+#include <openrct2/drawing/FilterPaletteIds.h>
 #include <openrct2/interface/Widget.h>
 
 namespace OpenRCT2::Ui
@@ -78,7 +78,7 @@ namespace OpenRCT2::Ui
         const ScreenCoordsXY& origin, const ScreenSize& size, WidgetType type, WindowColour colour, ImageIndex content,
         StringId tooltip = kStringIdNone)
     {
-        return makeWidget(origin, size, type, colour, ImageId(content, FilterPaletteID::paletteNull), tooltip);
+        return makeWidget(origin, size, type, colour, ImageId(content, Drawing::FilterPaletteID::paletteNull), tooltip);
     }
 
     constexpr Widget makeTab(const ScreenCoordsXY& origin, StringId tooltip = kStringIdNone)
@@ -248,7 +248,7 @@ namespace OpenRCT2::Ui
             makeDropdownButtonWidget(origin, size, type, colour, content, tooltip));
     };
 
-    void widgetDraw(RenderTarget& rt, WindowBase& w, WidgetIndex widgetIndex);
+    void widgetDraw(Drawing::RenderTarget& rt, WindowBase& w, WidgetIndex widgetIndex);
 
     bool widgetIsDisabled(const WindowBase& w, WidgetIndex widgetIndex);
     bool widgetIsHoldable(const WindowBase& w, WidgetIndex widgetIndex);

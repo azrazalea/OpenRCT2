@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -21,6 +21,7 @@
 #include <openrct2/audio/Audio.h>
 #include <openrct2/config/Config.h>
 #include <openrct2/core/String.hpp>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
 #include <openrct2/localisation/Formatter.h>
 #include <openrct2/localisation/LocalisationService.h>
@@ -45,11 +46,21 @@ using namespace OpenRCT2::TrackMetaData;
 namespace OpenRCT2::Ui::Windows
 {
     static constexpr StringId WindowTitle = kStringIdNone;
-    static constexpr ScreenSize kWindowSize = { 601, 382 };
     static constexpr int32_t kWindowHeightResearch = 194;
-    static constexpr int32_t RideListItemsMax = 384;
+    static constexpr int32_t RideListItemsMax = kMaxRideObjects;
     static constexpr int32_t RideTabCount = 6;
     static constexpr int32_t GroupByTrackTypeWidth = 172;
+    static constexpr int32_t kScrollItemSize = 116;
+    static constexpr int32_t kMinColCount = 5;
+    static constexpr int32_t kMaxColCount = 15;
+    static constexpr int32_t kMinRowCount = 2;
+    static constexpr int32_t kMaxRowCount = 7;
+    static constexpr int32_t kHorizontalPadding = 21;
+    static constexpr int32_t kVerticalPadding = 150;
+    static constexpr ScreenSize kWindowSize = { (kMinColCount * kScrollItemSize) + kHorizontalPadding,
+                                                (kMinRowCount * kScrollItemSize) + kVerticalPadding };
+    static constexpr ScreenSize kWindowMaxSize = { (kMaxColCount * kScrollItemSize) + kHorizontalPadding,
+                                                   (kMaxRowCount * kScrollItemSize) + kVerticalPadding };
 
 #pragma region Ride type view order
 
@@ -420,7 +431,7 @@ namespace OpenRCT2::Ui::Windows
             widgets[WIDX_GROUP_BY_TRACK_TYPE].left = width - 8 - localizedGroupByTrackTypeWidth;
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -447,7 +458,8 @@ namespace OpenRCT2::Ui::Windows
                 count++;
                 listItem++;
             }
-            return { widgets[WIDX_RIDE_LIST].width(), ((count + 4) / 5) * 116 };
+            auto itemsPerRow = getNumImagesPerRow();
+            return { widgets[WIDX_RIDE_LIST].width() - 1, ((count + (itemsPerRow - 1)) / itemsPerRow) * kScrollItemSize };
         }
 
         void onScrollMouseOver(int32_t scrollIndex, const ScreenCoordsXY& screenCoords) override
@@ -477,7 +489,7 @@ namespace OpenRCT2::Ui::Windows
             invalidate();
         }
 
-        void onScrollDraw(int32_t scrollIndex, RenderTarget& rt) override
+        void onScrollDraw(int32_t scrollIndex, Drawing::RenderTarget& rt) override
         {
             if (_currentTab == RESEARCH_TAB)
             {
@@ -496,8 +508,8 @@ namespace OpenRCT2::Ui::Windows
                 {
                     const auto borderStyle = isSelected ? Rectangle::BorderStyle::inset : Rectangle::BorderStyle::outset;
                     Rectangle::fillInset(
-                        rt, { coords, coords + ScreenCoordsXY{ 115, 115 } }, colours[1], borderStyle,
-                        Rectangle::FillBrightness::dark);
+                        rt, { coords, coords + ScreenCoordsXY{ kScrollItemSize - 1, kScrollItemSize - 1 } }, colours[1],
+                        borderStyle, Rectangle::FillBrightness::dark);
                 }
 
                 // Draw ride image with feathered border
@@ -506,11 +518,11 @@ namespace OpenRCT2::Ui::Windows
                 GfxDrawSpriteRawMasked(rt, coords + ScreenCoordsXY{ 2, 2 }, mask, rideImage);
 
                 // Next position
-                coords.x += 116;
-                if (coords.x >= 116 * 5 + 1)
+                coords.x += kScrollItemSize;
+                if (coords.x >= kScrollItemSize * getNumImagesPerRow() + 1)
                 {
                     coords.x = 1;
-                    coords.y += 116;
+                    coords.y += kScrollItemSize;
                 }
 
                 // Next item
@@ -809,8 +821,6 @@ namespace OpenRCT2::Ui::Windows
 
         void RefreshWidgetSizing()
         {
-            int32_t newWidth{}, newHeight{};
-
             if (_currentTab < SHOP_TAB)
             {
                 disabledWidgets &= ~(1 << WIDX_GROUP_BY_TRACK_TYPE);
@@ -831,6 +841,7 @@ namespace OpenRCT2::Ui::Windows
                 widgets[WIDX_GROUP_BY_TRACK_TYPE].type = WidgetType::empty;
             }
 
+            ScreenSize newMinSize{}, newMaxSize{};
             if (_currentTab != RESEARCH_TAB)
             {
                 widgets[WIDX_RIDE_LIST].type = WidgetType::scroll;
@@ -841,8 +852,8 @@ namespace OpenRCT2::Ui::Windows
                 widgets[WIDX_LAST_DEVELOPMENT_BUTTON].type = WidgetType::empty;
                 widgets[WIDX_RESEARCH_FUNDING_BUTTON].type = WidgetType::empty;
 
-                newWidth = kWindowSize.width;
-                newHeight = kWindowSize.height;
+                newMinSize = kWindowSize;
+                newMaxSize = kWindowMaxSize;
             }
             else
             {
@@ -855,22 +866,33 @@ namespace OpenRCT2::Ui::Windows
                 if (!(getGameState().park.flags & PARK_FLAGS_NO_MONEY))
                     widgets[WIDX_RESEARCH_FUNDING_BUTTON].type = WidgetType::flatBtn;
 
-                newWidth = 300;
-                newHeight = kWindowHeightResearch;
+                newMinSize = { 300, kWindowHeightResearch };
+                newMaxSize = newMinSize;
             }
 
             // Handle new window size
-            if (width != newWidth || height != newHeight)
+            if (width != newMinSize.width || height != newMinSize.height)
             {
-                ScreenSize newSize = { newWidth, newHeight };
-                WindowSetResize(*this, newSize, newSize);
+                WindowSetResize(*this, newMinSize, newMaxSize);
                 onResize();
-
-                widgets[WIDX_GROUP_BY_TRACK_TYPE].left = newWidth - 8 - GroupByTrackTypeWidth;
-                widgets[WIDX_GROUP_BY_TRACK_TYPE].right = newWidth - 8;
             }
 
             initScrollWidgets();
+        }
+
+        void onResize() override
+        {
+            widgets[WIDX_GROUP_BY_TRACK_TYPE].left = width - 8 - GroupByTrackTypeWidth;
+            widgets[WIDX_GROUP_BY_TRACK_TYPE].right = width - 8;
+            widgets[WIDX_RIDE_LIST].right = width - 3 - 1;
+            widgets[WIDX_RIDE_LIST].bottom = height - 65;
+        }
+
+        uint8_t getNumImagesPerRow()
+        {
+            const Widget& listWidget = widgets[WIDX_RIDE_LIST];
+            auto scrollWidth = listWidget.width();
+            return scrollWidth / kScrollItemSize;
         }
 
         RideSelection ScrollGetRideListItemAt(const ScreenCoordsXY& screenCoords)
@@ -882,12 +904,13 @@ namespace OpenRCT2::Ui::Windows
             if (screenCoords.x <= 0 || screenCoords.y <= 0)
                 return result;
 
-            int32_t column = screenCoords.x / 116;
-            int32_t row = screenCoords.y / 116;
-            if (column >= 5)
+            auto itemsPerRow = getNumImagesPerRow();
+            int32_t column = screenCoords.x / kScrollItemSize;
+            int32_t row = screenCoords.y / kScrollItemSize;
+            if (column >= itemsPerRow)
                 return result;
 
-            int32_t index = column + (row * 5);
+            int32_t index = column + (row * itemsPerRow);
 
             RideSelection* listItem = _windowNewRideListItems;
             while (listItem->Type != kRideTypeNull || listItem->EntryIndex != kObjectEntryIndexNull)
@@ -919,7 +942,8 @@ namespace OpenRCT2::Ui::Windows
             widgetScrollUpdateThumbs(*this, WIDX_RIDE_LIST);
         }
 
-        void DrawRideInformation(RenderTarget& rt, RideSelection item, const ScreenCoordsXY& screenPos, int32_t textWidth)
+        void DrawRideInformation(
+            Drawing::RenderTarget& rt, RideSelection item, const ScreenCoordsXY& screenPos, int32_t textWidth)
         {
             auto& objMgr = OpenRCT2::GetContext()->GetObjectManager();
             const auto* rideObj = objMgr.GetLoadedObject<RideObject>(item.EntryIndex);
@@ -978,7 +1002,7 @@ namespace OpenRCT2::Ui::Windows
 
                 ft = Formatter();
                 ft.Add<money64>(price);
-                DrawTextBasic(rt, screenPos + ScreenCoordsXY{ textWidth, 51 }, stringId, ft, { TextAlignment::right });
+                DrawTextBasic(rt, screenPos + ScreenCoordsXY{ textWidth - 14, 51 }, stringId, ft, { TextAlignment::right });
             }
 
             // Draw object author(s) if debugging tools are active
@@ -1005,7 +1029,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void DrawTabImage(RenderTarget& rt, NewRideTabId tab, int32_t spriteIndex)
+        void DrawTabImage(Drawing::RenderTarget& rt, NewRideTabId tab, int32_t spriteIndex)
         {
             WidgetIndex widgetIndex = WIDX_TAB_1 + static_cast<int32_t>(tab);
 
@@ -1023,7 +1047,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void DrawTabImages(RenderTarget& rt)
+        void DrawTabImages(Drawing::RenderTarget& rt)
         {
             DrawTabImage(rt, TRANSPORT_TAB, SPR_TAB_RIDES_TRANSPORT_0);
             DrawTabImage(rt, GENTLE_TAB, SPR_TAB_RIDES_GENTLE_0);
@@ -1086,7 +1110,8 @@ namespace OpenRCT2::Ui::Windows
         windowMgr->CloseByClass(WindowClass::trackDesignPlace);
 
         window = windowMgr->Create<NewRideWindow>(
-            WindowClass::constructRide, kWindowSize, { WindowFlag::higherContrastOnPress, WindowFlag::autoPosition });
+            WindowClass::constructRide, kWindowSize,
+            { WindowFlag::higherContrastOnPress, WindowFlag::autoPosition, WindowFlag::resizable });
         return window;
     }
 

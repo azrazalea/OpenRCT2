@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -311,7 +311,7 @@ namespace OpenRCT2::Ui::Windows
                 gDropdown.items[0] = Dropdown::PlainMenuLabel(STR_CLOSE_ALL);
                 gDropdown.items[1] = Dropdown::PlainMenuLabel(STR_OPEN_ALL);
                 WindowDropdownShowText(
-                    { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(), colours[1], 0, 2);
+                    { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() - 1, colours[1], 0, 2);
             }
             else if (widgetIndex == WIDX_HEADER_CUSTOMISE)
             {
@@ -343,11 +343,11 @@ namespace OpenRCT2::Ui::Windows
 
                 const auto& headerWidget = widgets[WIDX_HEADER_OTHER];
                 const auto& customWidget = widgets[WIDX_HEADER_CUSTOMISE];
-                auto totalWidth = headerWidget.width() + customWidget.width();
+                auto totalWidth = headerWidget.width() - 1 + customWidget.width() - 1;
 
                 WindowDropdownShowTextCustomWidth(
-                    { windowPos.x + headerWidget.left, windowPos.y + headerWidget.top }, headerWidget.height(), colours[1], 0,
-                    Dropdown::Flag::StayOpen, numItems, totalWidth);
+                    { windowPos.x + headerWidget.left, windowPos.y + headerWidget.top }, headerWidget.height() - 1, colours[1],
+                    0, Dropdown::Flag::StayOpen, numItems, totalWidth);
             }
         }
 
@@ -567,7 +567,7 @@ namespace OpenRCT2::Ui::Windows
             widgets[WIDX_HEADER_CUSTOMISE].right = widgets[WIDX_LIST].right - 1;
             widgets[WIDX_HEADER_CUSTOMISE].left = widgets[WIDX_HEADER_CUSTOMISE].right - 14;
 
-            auto columnWidth = (widgets[WIDX_LIST].width() - widgets[WIDX_HEADER_CUSTOMISE].width()) / 2;
+            auto columnWidth = (widgets[WIDX_LIST].width() - 1 - widgets[WIDX_HEADER_CUSTOMISE].width() - 1) / 2;
 
             widgets[WIDX_HEADER_OTHER].right = widgets[WIDX_HEADER_CUSTOMISE].left - 1;
             widgets[WIDX_HEADER_OTHER].left = widgets[WIDX_HEADER_OTHER].right - columnWidth + 1;
@@ -628,7 +628,7 @@ namespace OpenRCT2::Ui::Windows
          *
          *  rct2: 0x006B3235
          */
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             WindowDrawWidgets(*this, rt);
             DrawTabImages(rt);
@@ -642,9 +642,9 @@ namespace OpenRCT2::Ui::Windows
                 ft.Add<StringId>(strId);
                 ft.Add<StringId>(indicatorId);
 
-                auto cdpi = const_cast<const RenderTarget&>(rt);
+                auto cRT = const_cast<const RenderTarget&>(rt);
                 DrawTextEllipsised(
-                    cdpi, windowPos + ScreenCoordsXY{ widget.left + 1, widget.top + 1 }, widget.width(),
+                    cRT, windowPos + ScreenCoordsXY{ widget.left + 1, widget.top + 1 }, widget.width() - 1,
                     STR_RIDE_LIST_HEADER_FORMAT, ft, { colours[1] });
             };
 
@@ -665,7 +665,7 @@ namespace OpenRCT2::Ui::Windows
          *
          *  rct2: 0x006B3240
          */
-        void onScrollDraw(int32_t scrollIndex, RenderTarget& rt) override
+        void onScrollDraw(int32_t scrollIndex, Drawing::RenderTarget& rt) override
         {
             auto rtCoords = ScreenCoordsXY{ rt.x, rt.y };
             Rectangle::fill(
@@ -700,7 +700,7 @@ namespace OpenRCT2::Ui::Windows
                 ridePtr->formatNameTo(ft);
 
                 auto& nameHeader = widgets[WIDX_HEADER_NAME];
-                DrawTextEllipsised(rt, { 0, y - 1 }, nameHeader.width() - 2, format, ft);
+                DrawTextEllipsised(rt, { 0, y - 1 }, nameHeader.width() - 3, format, ft);
 
                 // Ride information
                 ft = Formatter();
@@ -907,7 +907,7 @@ namespace OpenRCT2::Ui::Windows
                 }
 
                 auto infoHeader = widgets[WIDX_HEADER_OTHER];
-                DrawTextEllipsised(rt, { infoHeader.left - 4, y - 1 }, infoHeader.width() - 2, format, ft);
+                DrawTextEllipsised(rt, { infoHeader.left - 4, y - 1 }, infoHeader.width() - 3, format, ft);
                 y += kScrollableRowHeight;
             }
         }
@@ -922,7 +922,7 @@ namespace OpenRCT2::Ui::Windows
          *
          *  rct2: 0x006B38EA
          */
-        void DrawTabImages(RenderTarget& rt)
+        void DrawTabImages(Drawing::RenderTarget& rt)
         {
             int32_t sprite_idx;
 
@@ -1018,9 +1018,9 @@ namespace OpenRCT2::Ui::Windows
                 // Get the ride name once and use it for both filtering and storage
                 auto rideName = rideRef.getName();
 
-                if (rideRef.windowInvalidateFlags & RIDE_INVALIDATE_RIDE_LIST)
+                if (rideRef.windowInvalidateFlags.has(RideInvalidateFlag::list))
                 {
-                    rideRef.windowInvalidateFlags &= ~RIDE_INVALIDATE_RIDE_LIST;
+                    rideRef.windowInvalidateFlags.unset(RideInvalidateFlag::list);
                 }
 
                 const auto filterApplies = IsFiltered(rideName);

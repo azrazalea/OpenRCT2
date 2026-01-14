@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -49,6 +49,8 @@
 
 using namespace OpenRCT2;
 using namespace OpenRCT2::TrackMetaData;
+using OpenRCT2::GameActions::CommandFlag;
+using OpenRCT2::GameActions::CommandFlags;
 
 void FootpathUpdateQueueEntranceBanner(const CoordsXY& footpathPos, TileElement* tileElement);
 
@@ -480,7 +482,7 @@ static void Loc6A6FD2(const CoordsXYZ& initialTileElementPos, int32_t direction,
 
 static void Loc6A6F1F(
     const CoordsXYZ& initialTileElementPos, int32_t direction, TileElement* tileElement, TileElement* initialTileElement,
-    const CoordsXY& targetPos, int32_t flags, bool query, FootpathNeighbourList* neighbourList)
+    const CoordsXY& targetPos, CommandFlags flags, bool query, FootpathNeighbourList* neighbourList)
 {
     if (query)
     {
@@ -516,14 +518,15 @@ static void Loc6A6F1F(
     }
     else
     {
-        FootpathDisconnectQueueFromPath(targetPos, tileElement, 1 + ((flags >> 6) & 1));
+        const bool isGhost = flags.has(CommandFlag::ghost);
+        FootpathDisconnectQueueFromPath(targetPos, tileElement, isGhost ? 2 : 1);
         tileElement->AsPath()->SetEdges(tileElement->AsPath()->GetEdges() | (1 << DirectionReverse(direction)));
         if (tileElement->AsPath()->IsQueue())
         {
             FootpathQueueChainPush(tileElement->AsPath()->GetRideIndex());
         }
     }
-    if (!(flags & (GAME_COMMAND_FLAG_GHOST | GAME_COMMAND_FLAG_ALLOW_DURING_PAUSED)))
+    if (!flags.hasAny(CommandFlag::ghost, CommandFlag::allowDuringPaused))
     {
         FootpathInterruptPeeps({ targetPos, tileElement->GetBaseZ() });
     }
@@ -532,7 +535,7 @@ static void Loc6A6F1F(
 }
 
 static void Loc6A6D7E(
-    const CoordsXYZ& initialTileElementPos, int32_t direction, TileElement* initialTileElement, int32_t flags, bool query,
+    const CoordsXYZ& initialTileElementPos, int32_t direction, TileElement* initialTileElement, CommandFlags flags, bool query,
     FootpathNeighbourList* neighbourList)
 {
     auto targetPos = CoordsXY{ initialTileElementPos } + CoordsDirectionDelta[direction];
@@ -593,13 +596,13 @@ static void Loc6A6D7E(
                         const auto trackType = tileElement->AsTrack()->GetTrackType();
                         const uint8_t trackSequence = tileElement->AsTrack()->GetSequenceIndex();
                         const auto& ted = GetTrackElementDescriptor(trackType);
-                        if (!(ted.sequences[trackSequence].flags & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH))
+                        if (!ted.sequences[trackSequence].flags.has(SequenceFlag::connectsToPath))
                         {
                             return;
                         }
                         uint16_t dx = DirectionReverse((direction - tileElement->GetDirection()) & kTileElementDirectionMask);
-
-                        if (!(ted.sequences[trackSequence].flags & (1 << dx)))
+                        auto connectionSides = ted.sequences[trackSequence].getEntranceConnectionSides();
+                        if (!(connectionSides & (1 << dx)))
                         {
                             return;
                         }
@@ -660,7 +663,7 @@ static void Loc6A6D7E(
 // TODO: Change this into a simple check that validates if the direction should be fully checked with Loc6A6D7E and move the
 // calling of Loc6A6D7E into the parent function.
 static void Loc6A6C85(
-    const CoordsXYE& tileElementPos, int32_t direction, int32_t flags, bool query, FootpathNeighbourList* neighbourList)
+    const CoordsXYE& tileElementPos, int32_t direction, CommandFlags flags, bool query, FootpathNeighbourList* neighbourList)
 {
     if (query
         && WallInTheWay(
@@ -692,12 +695,13 @@ static void Loc6A6C85(
         const auto trackType = tileElementPos.element->AsTrack()->GetTrackType();
         const uint8_t trackSequence = tileElementPos.element->AsTrack()->GetSequenceIndex();
         const auto& ted = GetTrackElementDescriptor(trackType);
-        if (!(ted.sequences[trackSequence].flags & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH))
+        if (!ted.sequences[trackSequence].flags.has(SequenceFlag::connectsToPath))
         {
             return;
         }
         uint16_t dx = (direction - tileElementPos.element->GetDirection()) & kTileElementDirectionMask;
-        if (!(ted.sequences[trackSequence].flags & (1 << dx)))
+        auto connectionSides = ted.sequences[trackSequence].getEntranceConnectionSides();
+        if (!(connectionSides & (1 << dx)))
         {
             return;
         }
@@ -726,7 +730,7 @@ static void Loc6A6C85(
  *
  *  rct2: 0x006A6C66
  */
-void FootpathConnectEdges(const CoordsXY& footpathPos, TileElement* tileElement, int32_t flags)
+void FootpathConnectEdges(const CoordsXY& footpathPos, TileElement* tileElement, CommandFlags flags)
 {
     FootpathNeighbourList neighbourList;
     FootpathNeighbour neighbour;
@@ -968,6 +972,51 @@ void FootpathUpdateQueueChains()
     }
 }
 
+int32_t FootpathQueueCountConnections(const CoordsXY& position, const PathElement& pathElement)
+{
+    int32_t connectionCount = 0;
+    for (const Direction direction : kAllDirections)
+    {
+        const uint8_t edge = 1 << direction;
+        if (pathElement.GetEdges() & edge)
+        {
+            const CoordsXY adjacentPathPosition = position + CoordsDirectionDelta[direction];
+            const int32_t z = pathElement.GetBaseZ();
+            const TileElement* tileElement = FootpathGetElement({ adjacentPathPosition, z, z + kLandHeightStep }, direction);
+
+            if (tileElement == nullptr)
+            {
+                tileElement = FootpathGetElement({ adjacentPathPosition, z - kLandHeightStep, z }, direction);
+
+                if (tileElement == nullptr)
+                {
+                    const EntranceElement* entrance = MapGetRideEntranceElementAt(CoordsXYZ{ adjacentPathPosition, z }, true);
+                    if (entrance == nullptr)
+                    {
+                        entrance = MapGetRideEntranceElementAt(CoordsXYZ{ adjacentPathPosition, z + kLandHeightStep }, true);
+                        if (entrance == nullptr)
+                            continue;
+                    }
+
+                    if (entrance_has_direction(*entrance, direction + entrance->GetDirection()))
+                    {
+                        connectionCount++;
+                    }
+                    continue;
+                }
+            }
+
+            const PathElement& adjacentPath = *tileElement->AsPath();
+
+            if (adjacentPath.GetEdges() & Numerics::rol4(edge, 2))
+            {
+                connectionCount++;
+            }
+        }
+    }
+    return connectionCount;
+}
+
 /**
  *
  *  rct2: 0x0069ADBD
@@ -1003,7 +1052,7 @@ static void FootpathFixOwnership(const CoordsXY& mapPos)
 
     auto landSetRightsAction = GameActions::LandSetRightsAction(
         mapPos, GameActions::LandSetRightSetting::SetOwnershipWithChecks, ownership);
-    landSetRightsAction.SetFlags(GAME_COMMAND_FLAG_NO_SPEND);
+    landSetRightsAction.SetFlags({ CommandFlag::noSpend });
     GameActions::Execute(&landSetRightsAction, getGameState());
 }
 
@@ -1656,10 +1705,11 @@ bool TileElementWantsPathConnectionTowards(const TileCoordsXYZD& coords, const T
                     const auto trackType = tileElement->AsTrack()->GetTrackType();
                     const uint8_t trackSequence = tileElement->AsTrack()->GetSequenceIndex();
                     const auto& ted = GetTrackElementDescriptor(trackType);
-                    if (ted.sequences[trackSequence].flags & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH)
+                    if (ted.sequences[trackSequence].flags.has(SequenceFlag::connectsToPath))
                     {
                         uint16_t dx = ((coords.direction - tileElement->GetDirection()) & kTileElementDirectionMask);
-                        if (ted.sequences[trackSequence].flags & (1 << dx))
+                        auto connectionSides = ted.sequences[trackSequence].getEntranceConnectionSides();
+                        if (connectionSides & (1 << dx))
                         {
                             // Track element has the flags required for the given direction
                             return true;
@@ -1685,49 +1735,6 @@ bool TileElementWantsPathConnectionTowards(const TileCoordsXYZD& coords, const T
     return false;
 }
 
-// fix up the corners around the given path element that gets removed
-static void FootpathFixCornersAround(const TileCoordsXY& footpathPos, TileElement* pathElement)
-{
-    // A mask for the paths' corners of each possible neighbour
-    static constexpr uint8_t cornersTouchingTile[3][3] = {
-        { 0b0010, 0b0011, 0b0001 },
-        { 0b0110, 0b0000, 0b1001 },
-        { 0b0100, 0b1100, 0b1000 },
-    };
-
-    // Sloped paths don't create filled corners, so no need to remove any
-    if (pathElement->GetType() == TileElementType::Path && pathElement->AsPath()->IsSloped())
-        return;
-
-    for (int32_t xOffset = -1; xOffset <= 1; xOffset++)
-    {
-        for (int32_t yOffset = -1; yOffset <= 1; yOffset++)
-        {
-            // Skip self
-            if (xOffset == 0 && yOffset == 0)
-                continue;
-
-            TileElement* tileElement = MapGetFirstElementAt(
-                TileCoordsXY{ footpathPos.x + xOffset, footpathPos.y + yOffset }.ToCoordsXY());
-            if (tileElement == nullptr)
-                continue;
-            do
-            {
-                if (tileElement->GetType() != TileElementType::Path)
-                    continue;
-                if (tileElement->AsPath()->IsSloped())
-                    continue;
-                if (tileElement->BaseHeight != pathElement->BaseHeight)
-                    continue;
-
-                const int32_t ix = xOffset + 1;
-                const int32_t iy = yOffset + 1;
-                tileElement->AsPath()->SetCorners(tileElement->AsPath()->GetCorners() & ~(cornersTouchingTile[iy][ix]));
-            } while (!(tileElement++)->IsLastForTile());
-        }
-    }
-}
-
 /**
  *
  *  rct2: 0x006A6AA7
@@ -1749,7 +1756,6 @@ void FootpathRemoveEdgesAt(const CoordsXY& footpathPos, TileElement* tileElement
 
     FootpathUpdateQueueEntranceBanner(footpathPos, tileElement);
 
-    bool fixCorners = false;
     for (uint8_t direction = 0; direction < kNumOrthogonalDirections; direction++)
     {
         int32_t z1 = tileElement->BaseHeight;
@@ -1777,18 +1783,6 @@ void FootpathRemoveEdgesAt(const CoordsXY& footpathPos, TileElement* tileElement
             FootpathRemoveEdgesTowards(
                 { footpathPos + CoordsDirectionDelta[direction], z0 * kCoordsZStep, z1 * kCoordsZStep }, direction, isQueue);
         }
-        else
-        {
-            // A footpath may stay connected, but its edges must be fixed later on when another edge does get removed.
-            fixCorners = true;
-        }
-    }
-
-    // Only fix corners when needed, to avoid changing corners that have been set for its looks.
-    if (fixCorners && tileElement->IsGhost())
-    {
-        auto tileFootpathPos = TileCoordsXY{ footpathPos };
-        FootpathFixCornersAround(tileFootpathPos, tileElement);
     }
 
     if (tileElement->GetType() == TileElementType::Path)
@@ -1873,7 +1867,7 @@ bool PathElement::IsLevelCrossing(const CoordsXY& coords) const
         return false;
     }
 
-    if (trackElement->GetTrackType() != TrackElemType::Flat)
+    if (trackElement->GetTrackType() != TrackElemType::flat)
     {
         return false;
     }

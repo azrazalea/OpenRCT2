@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -94,7 +94,7 @@ namespace OpenRCT2::Ui
 
         if (scroll.flags & VSCROLLBAR_VISIBLE)
         {
-            int32_t size = widget->height() - 1;
+            int32_t size = widget->height() - 2;
             if (scroll.flags & HSCROLLBAR_VISIBLE)
                 size -= 11;
             size = std::max(0, scroll.contentHeight - size);
@@ -102,7 +102,7 @@ namespace OpenRCT2::Ui
         }
         else
         {
-            int32_t size = widget->width() - 1;
+            int32_t size = widget->width() - 2;
             if (scroll.flags & VSCROLLBAR_VISIBLE)
                 size -= 11;
             size = std::max(0, scroll.contentWidth - size);
@@ -497,7 +497,7 @@ namespace OpenRCT2::Ui
         assert(end_tab_id < w->widgets.size());
 
         int32_t i, x = w->widgets[start_tab_id].left;
-        int32_t tab_width = w->widgets[start_tab_id].width();
+        int32_t tab_width = w->widgets[start_tab_id].width() - 1;
 
         for (i = start_tab_id; i <= end_tab_id; i++)
         {
@@ -1015,7 +1015,7 @@ namespace OpenRCT2::Ui::Windows
      *
      *  rct2: 0x00685BE1
      *
-     * @param dpi (edi)
+     * @param rt (edi)
      * @param w (esi)
      */
     void WindowDrawViewport(RenderTarget& rt, WindowBase& w)
@@ -1029,7 +1029,7 @@ namespace OpenRCT2::Ui::Windows
      */
     void WindowDrawWidgets(WindowBase& w, RenderTarget& rt)
     {
-        if ((w.flags.has(WindowFlag::transparent)) && !(w.flags.has(WindowFlag::noBackground)))
+        if (w.flags.has(WindowFlag::transparent) && !w.flags.has(WindowFlag::noBackground))
             Rectangle::filter(
                 rt, { w.windowPos, w.windowPos + ScreenCoordsXY{ w.width - 1, w.height - 1 } }, FilterPaletteID::palette51);
 

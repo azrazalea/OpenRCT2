@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -24,12 +24,17 @@
     #include <tuple>
 
 // clang-format off
-// CNG: Cryptography API: Next Generation (CNG)
-//      available in Windows Vista onwards.
-#include <windows.h>
-#include <wincrypt.h>
-#include <bcrypt.h>
-constexpr bool NT_SUCCESS(NTSTATUS status) {return status >= 0;}
+    // windows.h needs to be included first
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+    #endif
+    #include <windows.h>
+
+    // CNG: Cryptography API: Next Generation (CNG)
+    //      available in Windows Vista onwards.
+    #include <wincrypt.h>
+    #include <bcrypt.h>
+    constexpr bool NT_SUCCESS(NTSTATUS status) {return status >= 0;}
 // clang-format on
 
 using namespace OpenRCT2::Crypt;

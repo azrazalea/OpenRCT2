@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -19,6 +19,7 @@
 #include <openrct2/Input.h>
 #include <openrct2/SpriteIds.h>
 #include <openrct2/config/Config.h>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
 #include <openrct2/drawing/Text.h>
 #include <openrct2/interface/ColourWithFlags.h>
@@ -382,11 +383,11 @@ namespace OpenRCT2::Ui
         ScreenCoordsXY coords = { (topLeft.x + r + 1) / 2 - 1, topLeft.y };
         if (widget.type == WidgetType::labelCentred)
         {
-            DrawTextWrapped(rt, coords, widget.width() - 2, stringId, ft, { colour, TextAlignment::centre });
+            DrawTextWrapped(rt, coords, widget.width() - 3, stringId, ft, { colour, TextAlignment::centre });
         }
         else
         {
-            DrawTextEllipsised(rt, coords, widget.width() - 2, stringId, ft, { colour, TextAlignment::centre });
+            DrawTextEllipsised(rt, coords, widget.width() - 3, stringId, ft, { colour, TextAlignment::centre });
         }
     }
 
@@ -572,7 +573,7 @@ namespace OpenRCT2::Ui
             return;
 
         topLeft = w.windowPos + ScreenCoordsXY{ widget->left + 2, widget->top + 1 };
-        int32_t width = widget->width() - 4;
+        int32_t width = widget->width() - 5;
 
         if (static_cast<size_t>(widgetIndex + 1) < w.widgets.size()
             && (w.widgets[widgetIndex + 1]).type == WidgetType::closeBox)
@@ -622,12 +623,13 @@ namespace OpenRCT2::Ui
         if (widget.string == nullptr)
             return;
 
-        topLeft = w.windowPos + ScreenCoordsXY{ widget.midX() - 1, std::max<int32_t>(widget.top, widget.midY() - 5) };
+        const auto closeButtonTextOffset = Config::Get().interface.enlargedUi ? 5 : 6;
+        auto crossMidPoint = w.windowPos + ScreenCoordsXY{ widget.midX() - 1, widget.midY() - closeButtonTextOffset };
 
         if (widgetIsDisabled(w, widgetIndex))
             colour.flags.set(ColourFlag::inset, true);
 
-        DrawText(rt, topLeft, { colour, TextAlignment::centre }, widget.string);
+        DrawText(rt, crossMidPoint, { colour, TextAlignment::centre }, widget.string);
     }
 
     /**
@@ -677,7 +679,7 @@ namespace OpenRCT2::Ui
         }
 
         DrawTextEllipsised(
-            rt, w.windowPos + ScreenCoordsXY{ widget.left + 14, widget.textTop() }, widget.width() - 14, stringId, ft, colour);
+            rt, w.windowPos + ScreenCoordsXY{ widget.left + 14, widget.textTop() }, widget.width() - 15, stringId, ft, colour);
     }
 
     /**
@@ -708,8 +710,8 @@ namespace OpenRCT2::Ui
         bottomRight.x--;
         bottomRight.y--;
 
-        bool hScrollNeeded = scroll.contentWidth > widget.width() && (scroll.flags & HSCROLLBAR_VISIBLE);
-        bool vScrollNeeded = scroll.contentHeight > widget.height() && (scroll.flags & VSCROLLBAR_VISIBLE);
+        bool hScrollNeeded = scroll.contentWidth > (widget.width() - 1) && (scroll.flags & HSCROLLBAR_VISIBLE);
+        bool vScrollNeeded = scroll.contentHeight > widget.height() - 1 && (scroll.flags & VSCROLLBAR_VISIBLE);
 
         // Horizontal scrollbar
         if (hScrollNeeded)
@@ -740,7 +742,7 @@ namespace OpenRCT2::Ui
         // Create a new inner scroll render target
         RenderTarget scrollRT = rt;
 
-        // Clip the scroll dpi against the outer dpi
+        // Clip the scroll RT against the outer RT
         int32_t cl = std::max<int32_t>(rt.x, topLeft.x);
         int32_t ct = std::max<int32_t>(rt.y, topLeft.y);
         int32_t cr = std::min<int32_t>(rt.x + rt.width, bottomRight.x);
@@ -768,7 +770,7 @@ namespace OpenRCT2::Ui
         // Trough
         Rectangle::fill(rt, { { l + kScrollBarWidth, t }, { r - kScrollBarWidth, b } }, ColourMapA[colour.colour].lighter);
         Rectangle::fill(
-            rt, { { l + kScrollBarWidth, t }, { r - kScrollBarWidth, b } }, 0x1000000 | ColourMapA[colour.colour].mid_dark);
+            rt, { { l + kScrollBarWidth, t }, { r - kScrollBarWidth, b } }, ColourMapA[colour.colour].mid_dark, true);
         Rectangle::fill(
             rt, { { l + kScrollBarWidth, t + 2 }, { r - kScrollBarWidth, t + 2 } }, ColourMapA[colour.colour].mid_dark);
         Rectangle::fill(
@@ -815,7 +817,7 @@ namespace OpenRCT2::Ui
         // Trough
         Rectangle::fill(rt, { { l, t + kScrollBarWidth }, { r, b - kScrollBarWidth } }, ColourMapA[colour.colour].lighter);
         Rectangle::fill(
-            rt, { { l, t + kScrollBarWidth }, { r, b - kScrollBarWidth } }, 0x1000000 | ColourMapA[colour.colour].mid_dark);
+            rt, { { l, t + kScrollBarWidth }, { r, b - kScrollBarWidth } }, ColourMapA[colour.colour].mid_dark, true);
         Rectangle::fill(
             rt, { { l + 2, t + kScrollBarWidth }, { l + 2, b - kScrollBarWidth } }, ColourMapA[colour.colour].mid_dark);
         Rectangle::fill(
@@ -856,7 +858,7 @@ namespace OpenRCT2::Ui
         const auto& widget = w.widgets[widgetIndex];
 
         // Get the image
-        if (widget.image.GetIndex() == kSpriteIdNull)
+        if (widget.image.GetIndex() == kImageIndexUndefined)
             return;
         auto image = widget.image;
 
@@ -982,7 +984,7 @@ namespace OpenRCT2::Ui
         }
 
         const auto& scroll = w.scrolls[*scroll_id];
-        if ((scroll.flags & HSCROLLBAR_VISIBLE) && scroll.contentWidth > widget->width()
+        if ((scroll.flags & HSCROLLBAR_VISIBLE) && scroll.contentWidth > (widget->width() - 1)
             && screenCoords.y >= (w.windowPos.y + widget->bottom - (kScrollBarWidth + 1)))
         {
             // horizontal scrollbar
@@ -1020,7 +1022,7 @@ namespace OpenRCT2::Ui
             }
         }
         else if (
-            (scroll.flags & VSCROLLBAR_VISIBLE) && scroll.contentHeight > widget->height()
+            (scroll.flags & VSCROLLBAR_VISIBLE) && scroll.contentHeight > widget->height() - 1
             && (screenCoords.x >= w.windowPos.x + widget->right - (kScrollBarWidth + 1)))
         {
             // vertical scrollbar
@@ -1208,8 +1210,8 @@ namespace OpenRCT2::Ui
         if (OpenRCT2::Ui::Windows::TextBoxCaretIsFlashed())
         {
             auto colour = ColourMapA[w.colours[1].colour].mid_light;
-            auto y = topLeft.y + 1 + widget.height() - 4;
-            Rectangle::fill(rt, { { curX, y }, { curX + width, y } }, colour + 5);
+            auto y = topLeft.y + 1 + widget.height() - 5;
+            Rectangle::fill(rt, { { curX, y }, { curX + width, y } }, static_cast<PaletteIndex>(EnumValue(colour) + 5));
         }
     }
 
@@ -1236,12 +1238,12 @@ namespace OpenRCT2::Ui
                 return;
         }
 
-        const auto barWidth = widget.width() - 2;
+        const auto barWidth = widget.width() - 3;
         const int32_t fillSize = (barWidth * percentage) / 100;
         if (fillSize > 0)
         {
             Rectangle::fillInset(
-                rt, { topLeft + ScreenCoordsXY{ 1, 1 }, topLeft + ScreenCoordsXY{ fillSize + 1, widget.height() - 1 } },
+                rt, { topLeft + ScreenCoordsXY{ 1, 1 }, topLeft + ScreenCoordsXY{ fillSize + 1, widget.height() - 2 } },
                 { widget.colour });
         }
     }
@@ -1283,7 +1285,7 @@ namespace OpenRCT2::Ui
 
         if (scroll.flags & HSCROLLBAR_VISIBLE)
         {
-            int32_t view_size = widget.width() - 21;
+            int32_t view_size = widget.width() - 22;
             if (scroll.flags & VSCROLLBAR_VISIBLE)
                 view_size -= 11;
             int32_t x = scroll.contentOffsetX * view_size;
@@ -1291,7 +1293,7 @@ namespace OpenRCT2::Ui
                 x /= scroll.contentWidth;
             scroll.hThumbLeft = x + 11;
 
-            x = widget.width() - 2;
+            x = widget.width() - 3;
             if (scroll.flags & VSCROLLBAR_VISIBLE)
                 x -= 11;
             x += scroll.contentOffsetX;
@@ -1312,7 +1314,7 @@ namespace OpenRCT2::Ui
 
         if (scroll.flags & VSCROLLBAR_VISIBLE)
         {
-            int32_t view_size = widget.height() - 21;
+            int32_t view_size = widget.height() - 22;
             if (scroll.flags & HSCROLLBAR_VISIBLE)
                 view_size -= 11;
             int32_t y = scroll.contentOffsetY * view_size;
@@ -1320,7 +1322,7 @@ namespace OpenRCT2::Ui
                 y /= scroll.contentHeight;
             scroll.vThumbTop = y + 11;
 
-            y = widget.height() - 2;
+            y = widget.height() - 3;
             if (scroll.flags & HSCROLLBAR_VISIBLE)
                 y -= 11;
             y += scroll.contentOffsetY;

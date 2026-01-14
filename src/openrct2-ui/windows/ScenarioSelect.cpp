@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -267,7 +267,7 @@ namespace OpenRCT2::Ui::Windows
             invalidate();
         }
 
-        ScreenCoordsXY DrawPreview(RenderTarget& rt, ScreenCoordsXY screenPos)
+        ScreenCoordsXY DrawPreview(Drawing::RenderTarget& rt, ScreenCoordsXY screenPos)
         {
             auto targetImageType = PreviewImageType::miniMap;
             if (Config::Get().interface.scenarioPreviewScreenshots)
@@ -302,7 +302,7 @@ namespace OpenRCT2::Ui::Windows
             return frameEndPos;
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
 
@@ -540,9 +540,9 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onScrollDraw(int32_t scrollIndex, RenderTarget& rt) override
+        void onScrollDraw(int32_t scrollIndex, Drawing::RenderTarget& rt) override
         {
-            uint8_t paletteIndex = ColourMapA[colours[1].colour].mid_light;
+            auto paletteIndex = ColourMapA[colours[1].colour].mid_light;
             GfxClear(rt, paletteIndex);
 
             StringId highlighted_format = STR_WINDOW_COLOUR_2_STRINGID;
@@ -554,7 +554,7 @@ namespace OpenRCT2::Ui::Windows
             }
 
             const auto& listWidget = widgets[WIDX_SCENARIOLIST];
-            int32_t listWidth = listWidget.width() - 12;
+            int32_t listWidth = listWidget.width() - 13;
 
             const int32_t scenarioItemHeight = GetScenarioListItemSize();
 
@@ -611,7 +611,7 @@ namespace OpenRCT2::Ui::Windows
                         if (isCompleted)
                         {
                             // Draw completion tick
-                            GfxDrawSprite(rt, ImageId(SPR_MENU_CHECKMARK), { widgets[WIDX_SCENARIOLIST].width() - 45, y + 1 });
+                            GfxDrawSprite(rt, ImageId(SPR_MENU_CHECKMARK), { widgets[WIDX_SCENARIOLIST].width() - 46, y + 1 });
 
                             // Draw completion score
                             u8string completedByName = "???";
@@ -636,11 +636,11 @@ namespace OpenRCT2::Ui::Windows
         }
 
     private:
-        void DrawCategoryHeading(RenderTarget& rt, int32_t left, int32_t right, int32_t y, StringId stringId) const
+        void DrawCategoryHeading(Drawing::RenderTarget& rt, int32_t left, int32_t right, int32_t y, StringId stringId) const
         {
             auto baseColour = colours[1];
-            colour_t lightColour = ColourMapA[baseColour.colour].lighter;
-            colour_t darkColour = ColourMapA[baseColour.colour].mid_dark;
+            auto lightColour = ColourMapA[baseColour.colour].lighter;
+            auto darkColour = ColourMapA[baseColour.colour].mid_dark;
 
             // Draw string
             int32_t centreX = (left + right) / 2;

@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -1444,7 +1444,7 @@ void ClearElementAt(const CoordsXY& loc, TileElement** elementPtr)
             auto parkEntranceRemoveAction = GameActions::ParkEntranceRemoveAction(CoordsXYZ{ seqLoc, element->GetBaseZ() });
             auto result = GameActions::ExecuteNested(&parkEntranceRemoveAction, gameState);
             // If asking nicely did not work, forcibly remove this to avoid an infinite loop.
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 TileElementRemove(element);
             }
@@ -1456,7 +1456,7 @@ void ClearElementAt(const CoordsXY& loc, TileElement** elementPtr)
             auto wallRemoveAction = GameActions::WallRemoveAction(wallLocation);
             auto result = GameActions::ExecuteNested(&wallRemoveAction, gameState);
             // If asking nicely did not work, forcibly remove this to avoid an infinite loop.
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 TileElementRemove(element);
             }
@@ -1468,7 +1468,7 @@ void ClearElementAt(const CoordsXY& loc, TileElement** elementPtr)
                 { loc.x, loc.y, element->GetBaseZ(), element->GetDirection() }, element->AsLargeScenery()->GetSequenceIndex());
             auto result = GameActions::ExecuteNested(&removeSceneryAction, gameState);
             // If asking nicely did not work, forcibly remove this to avoid an infinite loop.
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 TileElementRemove(element);
             }
@@ -1480,7 +1480,7 @@ void ClearElementAt(const CoordsXY& loc, TileElement** elementPtr)
                 { loc.x, loc.y, element->GetBaseZ(), element->AsBanner()->GetPosition() });
             auto result = GameActions::ExecuteNested(&bannerRemoveAction, gameState);
             // If asking nicely did not work, forcibly remove this to avoid an infinite loop.
-            if (result.Error != GameActions::Status::Ok)
+            if (result.error != GameActions::Status::ok)
             {
                 TileElementRemove(element);
             }

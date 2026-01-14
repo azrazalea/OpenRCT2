@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -14,6 +14,7 @@
 #include <openrct2/GameState.h>
 #include <openrct2/SpriteIds.h>
 #include <openrct2/actions/ParkSetLoanAction.h>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
 #include <openrct2/localisation/Formatter.h>
 #include <openrct2/localisation/Formatting.h>
@@ -346,7 +347,7 @@ namespace OpenRCT2::Ui::Windows
             onPrepareDrawGraph(graphPageWidget, centredGraph);
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -395,7 +396,7 @@ namespace OpenRCT2::Ui::Windows
             return {};
         }
 
-        void onScrollDraw(int32_t scrollIndex, RenderTarget& rt) override
+        void onScrollDraw(int32_t scrollIndex, Drawing::RenderTarget& rt) override
         {
             if (page != WINDOW_FINANCES_PAGE_SUMMARY)
                 return;
@@ -403,7 +404,7 @@ namespace OpenRCT2::Ui::Windows
             auto screenCoords = ScreenCoordsXY{ 0, kTableCellHeight + 2 };
 
             auto& self = widgets[WIDX_SUMMARY_SCROLL];
-            int32_t row_width = std::max<uint16_t>(scrolls[0].contentWidth, self.width());
+            int32_t row_width = std::max<uint16_t>(scrolls[0].contentWidth, self.width() - 1);
 
             // Expenditure / Income row labels
             for (int32_t i = 0; i < static_cast<int32_t>(ExpenditureType::count); i++)
@@ -414,7 +415,7 @@ namespace OpenRCT2::Ui::Windows
                         rt,
                         { screenCoords - ScreenCoordsXY{ 0, 1 },
                           screenCoords + ScreenCoordsXY{ row_width, (kTableCellHeight - 2) } },
-                        ColourMapA[colours[1].colour].lighter | 0x1000000);
+                        ColourMapA[colours[1].colour].lighter, true);
 
                 screenCoords.y += kTableCellHeight;
             }
@@ -564,7 +565,7 @@ namespace OpenRCT2::Ui::Windows
                         auto newLoan = gameState.park.bankLoan - 1000.00_GBP;
                         if (gameState.park.bankLoan > 0)
                         {
-                            newLoan = std::max(static_cast<money64>(0LL), newLoan);
+                            newLoan = std::max(0.00_GBP, newLoan);
                         }
                         auto gameAction = GameActions::ParkSetLoanAction(newLoan);
                         GameActions::Execute(&gameAction, gameState);
@@ -588,7 +589,7 @@ namespace OpenRCT2::Ui::Windows
                 initialiseScrollPosition(WIDX_SUMMARY_SCROLL, 0);
         }
 
-        void onDrawSummary(RenderTarget& rt)
+        void onDrawSummary(Drawing::RenderTarget& rt)
         {
             auto titleBarBottom = widgets[WIDX_TITLE].bottom;
             auto screenCoords = windowPos + ScreenCoordsXY{ 8, titleBarBottom + 37 };
@@ -608,7 +609,7 @@ namespace OpenRCT2::Ui::Windows
                     Rectangle::fill(
                         rt,
                         { screenCoords - ScreenCoordsXY{ 0, 1 }, screenCoords + ScreenCoordsXY{ 121, (kTableCellHeight - 2) } },
-                        ColourMapA[colours[1].colour].lighter | 0x1000000);
+                        ColourMapA[colours[1].colour].lighter, true);
 
                 DrawTextBasic(rt, screenCoords - ScreenCoordsXY{ 0, 1 }, _windowFinancesSummaryRowLabels[i]);
                 screenCoords.y += kTableCellHeight;
@@ -706,7 +707,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDrawMarketing(RenderTarget& rt)
+        void onDrawMarketing(Drawing::RenderTarget& rt)
         {
             auto screenCoords = windowPos + ScreenCoordsXY{ 8, widgets[WIDX_TAB_1].top + 45 };
             int32_t noCampaignsActive = 1;
@@ -785,7 +786,7 @@ namespace OpenRCT2::Ui::Windows
 
 #pragma region Graph Events
 
-        void onDrawGraph(RenderTarget& rt, const money64 currentValue, const StringId fmt) const
+        void onDrawGraph(Drawing::RenderTarget& rt, const money64 currentValue, const StringId fmt) const
         {
             Formatter ft;
             ft.Add<money64>(currentValue);
@@ -847,12 +848,12 @@ namespace OpenRCT2::Ui::Windows
         void initialiseScrollPosition(WidgetIndex widgetIndex, int32_t scrollId)
         {
             const auto& widget = this->widgets[widgetIndex];
-            scrolls[scrollId].contentOffsetX = std::max(0, scrolls[scrollId].contentWidth - (widget.width() - 2));
+            scrolls[scrollId].contentOffsetX = std::max(0, scrolls[scrollId].contentWidth - (widget.width() - 3));
 
             widgetScrollUpdateThumbs(*this, widgetIndex);
         }
 
-        void DrawTabImage(RenderTarget& rt, int32_t tabPage, int32_t spriteIndex)
+        void DrawTabImage(Drawing::RenderTarget& rt, int32_t tabPage, int32_t spriteIndex)
         {
             WidgetIndex widgetIndex = WIDX_TAB_1 + tabPage;
 
@@ -870,7 +871,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void DrawTabImages(RenderTarget& rt)
+        void DrawTabImages(Drawing::RenderTarget& rt)
         {
             DrawTabImage(rt, WINDOW_FINANCES_PAGE_SUMMARY, SPR_TAB_FINANCES_SUMMARY_0);
             DrawTabImage(rt, WINDOW_FINANCES_PAGE_FINANCIAL_GRAPH, SPR_TAB_FINANCES_FINANCIAL_GRAPH_0);

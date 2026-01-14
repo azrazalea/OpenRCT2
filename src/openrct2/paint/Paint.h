@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -10,14 +10,18 @@
 #pragma once
 
 #include "../core/Money.hpp"
-#include "../drawing/Drawing.h"
+#include "../drawing/FilterPaletteIds.h"
+#include "../drawing/ImageId.hpp"
+#include "../drawing/RenderTarget.h"
 #include "../interface/Colour.h"
+#include "../localisation/StringIdType.h"
 #include "../world/Location.hpp"
 #include "../world/MapLimits.h"
 #include "Boundbox.h"
 #include "tile_element/Paint.Tunnel.h"
 
 #include <mutex>
+#include <optional>
 #include <sfl/segmented_vector.hpp>
 #include <sfl/static_vector.hpp>
 #include <thread>
@@ -193,7 +197,7 @@ struct PaintNodeStorage
 
 struct PaintSession : public PaintSessionCore
 {
-    RenderTarget DPI;
+    OpenRCT2::Drawing::RenderTarget rt;
     PaintNodeStorage paintEntries;
 
     PaintStruct* AllocateNormalPaintEntry() noexcept
@@ -229,18 +233,6 @@ struct PaintSession : public PaintSessionCore
     }
 };
 
-struct FootpathPaintInfo
-{
-    uint32_t SurfaceImageId{};
-    uint32_t BridgeImageId{};
-    uint32_t RailingsImageId{};
-    uint32_t SurfaceFlags{};
-    uint32_t RailingFlags{};
-    uint8_t ScrollingMode{};
-    RailingEntrySupportType SupportType{};
-    colour_t SupportColour = 255;
-};
-
 extern PaintSession gPaintSession;
 
 // Globals for paint clipping
@@ -249,8 +241,8 @@ extern CoordsXY gClipSelectionA;
 extern CoordsXY gClipSelectionB;
 
 /** rct2: 0x00993CC4. The white ghost that indicates not-yet-built elements. */
-constexpr ImageId ConstructionMarker = ImageId(0).WithRemap(FilterPaletteID::paletteGhost);
-constexpr ImageId HighlightMarker = ImageId(0).WithRemap(FilterPaletteID::paletteGhost);
+constexpr ImageId ConstructionMarker = ImageId(0).WithRemap(OpenRCT2::Drawing::FilterPaletteID::paletteGhost);
+constexpr ImageId HighlightMarker = ImageId(0).WithRemap(OpenRCT2::Drawing::FilterPaletteID::paletteGhost);
 constexpr ImageId TrackStationColour = ImageId(0, COLOUR_BLACK);
 constexpr ImageId ShopSupportColour = ImageId(0, COLOUR_DARK_BROWN);
 
@@ -309,9 +301,9 @@ void PaintFloatingMoneyEffect(
     PaintSession& session, money64 amount, StringId string_id, int32_t y, int32_t z, int8_t y_offsets[], int32_t offset_x,
     uint32_t rotation);
 
-PaintSession* PaintSessionAlloc(RenderTarget& rt, uint32_t viewFlags, uint8_t rotation);
+PaintSession* PaintSessionAlloc(OpenRCT2::Drawing::RenderTarget& rt, uint32_t viewFlags, uint8_t rotation);
 void PaintSessionFree(PaintSession* session);
 void PaintSessionGenerate(PaintSession& session);
 void PaintSessionArrange(PaintSessionCore& session);
 void PaintDrawStructs(PaintSession& session);
-void PaintDrawMoneyStructs(RenderTarget& rt, PaintStringStruct* ps);
+void PaintDrawMoneyStructs(OpenRCT2::Drawing::RenderTarget& rt, PaintStringStruct* ps);

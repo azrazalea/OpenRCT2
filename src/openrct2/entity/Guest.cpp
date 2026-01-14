@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -1669,32 +1669,38 @@ static bool GuestDecideAndBuyItem(Guest& guest, Ride& ride, const ShopItem shopI
     guest.GiveItem(shopItem);
     const auto hasRandomShopColour = ride.hasLifecycleFlag(RIDE_LIFECYCLE_RANDOM_SHOP_COLOURS);
 
-    if (shopItem == ShopItem::tShirt)
-        guest.TshirtColour = hasRandomShopColour ? ScenarioRandMax(kColourNumNormal) : ride.trackColours[0].main;
-
-    if (shopItem == ShopItem::hat)
-        guest.HatColour = hasRandomShopColour ? ScenarioRandMax(kColourNumNormal) : ride.trackColours[0].main;
-
-    if (shopItem == ShopItem::balloon)
-        guest.BalloonColour = hasRandomShopColour ? ScenarioRandMax(kColourNumNormal) : ride.trackColours[0].main;
-
-    if (shopItem == ShopItem::umbrella)
-        guest.UmbrellaColour = hasRandomShopColour ? ScenarioRandMax(kColourNumNormal) : ride.trackColours[0].main;
-
-    if (shopItem == ShopItem::map)
-        guest.ResetPathfindGoal();
-
-    if (shopItem == ShopItem::photo)
-        guest.Photo1RideRef = ride.id;
-
-    if (shopItem == ShopItem::photo2)
-        guest.Photo2RideRef = ride.id;
-
-    if (shopItem == ShopItem::photo3)
-        guest.Photo3RideRef = ride.id;
-
-    if (shopItem == ShopItem::photo4)
-        guest.Photo4RideRef = ride.id;
+    switch (shopItem)
+    {
+        case ShopItem::tShirt:
+            guest.TshirtColour = hasRandomShopColour ? ScenarioRandMax(kColourNumNormal) : ride.trackColours[0].main;
+            break;
+        case ShopItem::hat:
+            guest.HatColour = hasRandomShopColour ? ScenarioRandMax(kColourNumNormal) : ride.trackColours[0].main;
+            break;
+        case ShopItem::balloon:
+            guest.BalloonColour = hasRandomShopColour ? ScenarioRandMax(kColourNumNormal) : ride.trackColours[0].main;
+            break;
+        case ShopItem::umbrella:
+            guest.UmbrellaColour = hasRandomShopColour ? ScenarioRandMax(kColourNumNormal) : ride.trackColours[0].main;
+            break;
+        case ShopItem::map:
+            guest.ResetPathfindGoal();
+            break;
+        case ShopItem::photo:
+            guest.Photo1RideRef = ride.id;
+            break;
+        case ShopItem::photo2:
+            guest.Photo2RideRef = ride.id;
+            break;
+        case ShopItem::photo3:
+            guest.Photo3RideRef = ride.id;
+            break;
+        case ShopItem::photo4:
+            guest.Photo4RideRef = ride.id;
+            break;
+        default:
+            break;
+    }
 
     guest.WindowInvalidateFlags |= PEEP_INVALIDATE_PEEP_INVENTORY;
     guest.UpdateAnimationGroup();
@@ -1709,28 +1715,24 @@ static bool GuestDecideAndBuyItem(Guest& guest, Ride& ride, const ShopItem shopI
         }
     }
 
-    if (shopItemDescriptor.IsFood())
-        guest.AmountOfFood++;
-
-    if (shopItemDescriptor.IsDrink())
-        guest.AmountOfDrinks++;
-
-    if (shopItemDescriptor.IsSouvenir())
-        guest.AmountOfSouvenirs++;
-
     money64* expend_type = &guest.PaidOnSouvenirs;
     ExpenditureType expenditure = ExpenditureType::shopStock;
 
     if (shopItemDescriptor.IsFood())
     {
+        guest.AmountOfFood++;
         expend_type = &guest.PaidOnFood;
         expenditure = ExpenditureType::foodDrinkStock;
     }
-
-    if (shopItemDescriptor.IsDrink())
+    else if (shopItemDescriptor.IsDrink())
     {
+        guest.AmountOfDrinks++;
         expend_type = &guest.PaidOnDrink;
         expenditure = ExpenditureType::foodDrinkStock;
+    }
+    else if (shopItemDescriptor.IsSouvenir())
+    {
+        guest.AmountOfSouvenirs++;
     }
 
     if (!(gameState.park.flags & PARK_FLAGS_NO_MONEY))
@@ -1748,10 +1750,10 @@ static bool GuestDecideAndBuyItem(Guest& guest, Ride& ride, const ShopItem shopI
         guest.SpendMoney(*expend_type, price, expenditure);
     }
     ride.totalProfit = AddClamp(ride.totalProfit, price - shopItemDescriptor.Cost);
-    ride.windowInvalidateFlags |= RIDE_INVALIDATE_RIDE_INCOME;
+    ride.windowInvalidateFlags.set(RideInvalidateFlag::income);
     ride.curNumCustomers++;
     ride.totalCustomers = AddClamp(ride.totalCustomers, 1u);
-    ride.windowInvalidateFlags |= RIDE_INVALIDATE_RIDE_CUSTOMER;
+    ride.windowInvalidateFlags.set(RideInvalidateFlag::customers);
 
     return true;
 }
@@ -1840,7 +1842,7 @@ void Guest::OnExitRide(Ride& ride)
     }
 
     ride.totalCustomers = AddClamp(ride.totalCustomers, 1u);
-    ride.windowInvalidateFlags |= RIDE_INVALIDATE_RIDE_CUSTOMER;
+    ride.windowInvalidateFlags.set(RideInvalidateFlag::customers);
 }
 
 /**
@@ -2346,7 +2348,7 @@ void Guest::SpendMoney(money64& peep_expend_type, money64 amount, ExpenditureTyp
 {
     assert(!(getGameState().park.flags & PARK_FLAGS_NO_MONEY));
 
-    CashInPocket = std::max(0.00_GBP, static_cast<money64>(CashInPocket) - amount);
+    CashInPocket = std::max(0.00_GBP, CashInPocket - amount);
     CashSpent += amount;
 
     peep_expend_type += amount;
@@ -2595,7 +2597,7 @@ static bool FindVehicleToEnter(
             if (vehicle->next_free_seat >= vehicle->num_seats)
                 continue;
 
-            if (vehicle->status != Vehicle::Status::WaitingForPassengers)
+            if (vehicle->status != Vehicle::Status::waitingForPassengers)
                 continue;
             chosen_train = i;
             break;
@@ -3372,7 +3374,7 @@ static bool PeepShouldUseCashMachine(Guest& guest, RideId rideIndex)
         ride->updateSatisfaction(guest.Happiness >> 6);
         ride->curNumCustomers++;
         ride->totalCustomers = AddClamp(ride->totalCustomers, 1u);
-        ride->windowInvalidateFlags |= RIDE_INVALIDATE_RIDE_CUSTOMER;
+        ride->windowInvalidateFlags.set(RideInvalidateFlag::customers);
     }
     return true;
 }
@@ -3909,7 +3911,7 @@ void Guest::UpdateRideFreeVehicleEnterRide(Ride& ride)
         else
         {
             ride.totalProfit = AddClamp<money64>(ride.totalProfit, ridePrice);
-            ride.windowInvalidateFlags |= RIDE_INVALIDATE_RIDE_INCOME;
+            ride.windowInvalidateFlags.set(RideInvalidateFlag::income);
             SpendMoney(PaidOnRides, ridePrice, ExpenditureType::parkRideTickets);
         }
     }
@@ -4235,7 +4237,7 @@ void Guest::UpdateRideLeaveVehicle()
                  vehicle = gameState.entities.GetEntity<Vehicle>(vehicle->prev_vehicle_on_ride))
             {
                 auto trackType = vehicle->GetTrackType();
-                if (trackType == TrackElemType::Flat || trackType > TrackElemType::MiddleStation)
+                if (trackType == TrackElemType::flat || trackType > TrackElemType::middleStation)
                     continue;
 
                 bool foundStation = false;
@@ -4804,7 +4806,7 @@ void Guest::UpdateRideOnSpiralSlide()
 
                 return;
             case PeepSpiralSlideSubState::prepareToSlide:
-                if (ride->slideInUse)
+                if (ride->slideInUse || ride->lifecycleFlags & RIDE_LIFECYCLE_BROKEN_DOWN)
                     return;
 
                 ride->slideInUse = 1;
@@ -5216,7 +5218,7 @@ void Guest::UpdateRideShopLeave()
     if (ride != nullptr)
     {
         ride->totalCustomers = AddClamp(ride->totalCustomers, 1u);
-        ride->windowInvalidateFlags |= RIDE_INVALIDATE_RIDE_CUSTOMER;
+        ride->windowInvalidateFlags.set(RideInvalidateFlag::customers);
         ride->updateSatisfaction(Happiness / 64);
     }
 }
@@ -5695,44 +5697,6 @@ void Guest::UpdateWalking()
     {
         InsertNewThought(PeepThoughtType::Scenery);
     }
-}
-
-void Guest::UpdateWaitingAtCrossing()
-{
-    if (!IsActionInterruptable())
-    {
-        UpdateAction();
-        Invalidate();
-        if (!IsActionWalking())
-            return;
-    }
-
-    Action = PeepActionType::idle;
-    NextAnimationType = PeepAnimationType::watchRide;
-    SwitchNextAnimationType();
-
-    if (HasFoodOrDrink())
-    {
-        if ((ScenarioRand() & 0xFFFF) <= 1310)
-        {
-            Action = PeepActionType::eatFood;
-            AnimationFrameNum = 0;
-            AnimationImageIdOffset = 0;
-        }
-
-        UpdateCurrentAnimationType();
-
-        return;
-    }
-
-    if ((ScenarioRand() & 0xFFFF) <= 64)
-    {
-        Action = PeepActionType::wave2;
-        AnimationFrameNum = 0;
-        AnimationImageIdOffset = 0;
-    }
-
-    UpdateCurrentAnimationType();
 }
 
 /**

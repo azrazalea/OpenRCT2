@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -15,14 +15,17 @@
 #include <array>
 #include <cassert>
 #include <openrct2/SpriteIds.h>
-#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/DrawingLock.hpp>
 #include <unordered_map>
 #include <vector>
 
-struct RenderTarget;
 struct PaletteMap;
-enum class FilterPaletteID : int32_t;
+
+namespace OpenRCT2::Drawing
+{
+    enum class FilterPaletteID : int32_t;
+    struct RenderTarget;
+} // namespace OpenRCT2::Drawing
 
 namespace OpenRCT2::Ui
 {
@@ -211,7 +214,7 @@ namespace OpenRCT2::Ui
         GLuint GetAtlasesTexture();
         GLuint GetPaletteTexture();
         GLuint GetBlendPaletteTexture();
-        static GLint PaletteToY(FilterPaletteID palette);
+        static GLint PaletteToY(Drawing::FilterPaletteID palette);
 
     private:
         void CreateTextures();
@@ -221,11 +224,11 @@ namespace OpenRCT2::Ui
         AtlasTextureInfo LoadGlyphTexture(const ImageId image, const PaletteMap& paletteMap);
         AtlasTextureInfo AllocateImage(int32_t imageWidth, int32_t imageHeight);
         AtlasTextureInfo LoadBitmapTexture(ImageIndex image, const void* pixels, size_t width, size_t height);
-        static RenderTarget GetImageAsDPI(const ImageId imageId);
-        static RenderTarget GetGlyphAsDPI(const ImageId imageId, const PaletteMap& paletteMap);
+        static Drawing::RenderTarget GetImageAsRT(const ImageId imageId);
+        static Drawing::RenderTarget GetGlyphAsRT(const ImageId imageId, const PaletteMap& paletteMap);
         void FreeTextures();
 
-        static RenderTarget CreateDPI(int32_t width, int32_t height);
-        static void DeleteDPI(RenderTarget rt);
+        static Drawing::RenderTarget CreateRT(int32_t width, int32_t height);
+        static void DeleteRT(Drawing::RenderTarget rt);
     };
 } // namespace OpenRCT2::Ui

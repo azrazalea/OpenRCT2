@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -24,6 +24,7 @@
 #include <openrct2/actions/ParkSetNameAction.h>
 #include <openrct2/config/Config.h>
 #include <openrct2/core/UnitConversion.h>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
 #include <openrct2/localisation/Currency.h>
 #include <openrct2/localisation/Formatting.h>
@@ -357,7 +358,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             switch (page)
             {
@@ -451,7 +452,7 @@ namespace OpenRCT2::Ui::Windows
                 gDropdown.items[0] = Dropdown::MenuLabel(STR_CLOSE_PARK);
                 gDropdown.items[1] = Dropdown::MenuLabel(STR_OPEN_PARK);
                 WindowDropdownShowText(
-                    { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() + 1, colours[1], 0, 2);
+                    { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(), colours[1], 0, 2);
 
                 if (Park::IsOpen(getGameState().park))
                 {
@@ -585,7 +586,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDrawEntrance(RenderTarget& rt)
+        void onDrawEntrance(Drawing::RenderTarget& rt)
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -604,8 +605,8 @@ namespace OpenRCT2::Ui::Windows
 
             auto* labelWidget = &widgets[WIDX_STATUS];
             DrawTextEllipsised(
-                rt, windowPos + ScreenCoordsXY{ labelWidget->midX(), labelWidget->top }, labelWidget->width(), STR_BLACK_STRING,
-                ft, { TextAlignment::centre });
+                rt, windowPos + ScreenCoordsXY{ labelWidget->midX(), labelWidget->top }, labelWidget->width() - 1,
+                STR_BLACK_STRING, ft, { TextAlignment::centre });
         }
 
         void initViewport()
@@ -646,7 +647,7 @@ namespace OpenRCT2::Ui::Windows
                     Widget* viewportWidget = &widgets[WIDX_VIEWPORT];
                     ViewportCreate(
                         *this, windowPos + ScreenCoordsXY{ viewportWidget->left + 1, viewportWidget->top + 1 },
-                        viewportWidget->width() - 1, viewportWidget->height() - 1, focus.value());
+                        viewportWidget->width() - 2, viewportWidget->height() - 2, focus.value());
                     flags |= WindowFlag::noScrolling;
                     invalidate();
                 }
@@ -700,7 +701,7 @@ namespace OpenRCT2::Ui::Windows
                 kGraphNumYLabels, kParkRatingHistorySize);
         }
 
-        void onDrawRating(RenderTarget& rt)
+        void onDrawRating(Drawing::RenderTarget& rt)
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -781,7 +782,7 @@ namespace OpenRCT2::Ui::Windows
                 kGraphNumYLabels, kGuestsInParkHistorySize);
         }
 
-        void onDrawGuests(RenderTarget& rt)
+        void onDrawGuests(Drawing::RenderTarget& rt)
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -882,7 +883,7 @@ namespace OpenRCT2::Ui::Windows
             WindowAlignTabs(this, WIDX_TAB_1, WIDX_TAB_7);
         }
 
-        void onDrawPrice(RenderTarget& rt)
+        void onDrawPrice(Drawing::RenderTarget& rt)
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -942,7 +943,7 @@ namespace OpenRCT2::Ui::Windows
             WindowAlignTabs(this, WIDX_TAB_1, WIDX_TAB_7);
         }
 
-        void onDrawStats(RenderTarget& rt)
+        void onDrawStats(Drawing::RenderTarget& rt)
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -1068,7 +1069,7 @@ namespace OpenRCT2::Ui::Windows
             WindowAlignTabs(this, WIDX_TAB_1, WIDX_TAB_7);
         }
 
-        void onDrawObjective(RenderTarget& rt)
+        void onDrawObjective(Drawing::RenderTarget& rt)
         {
             auto& gameState = getGameState();
             drawWidgets(rt);
@@ -1134,7 +1135,7 @@ namespace OpenRCT2::Ui::Windows
             WindowAlignTabs(this, WIDX_TAB_1, WIDX_TAB_7);
         }
 
-        void onDrawAwards(RenderTarget& rt)
+        void onDrawAwards(Drawing::RenderTarget& rt)
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -1208,7 +1209,7 @@ namespace OpenRCT2::Ui::Windows
             pressedWidgets |= 1LL << (WIDX_TAB_1 + page);
         }
 
-        void DrawTabImages(RenderTarget& rt)
+        void DrawTabImages(Drawing::RenderTarget& rt)
         {
             // Entrance tab
             if (!widgetIsDisabled(*this, WIDX_TAB_1))

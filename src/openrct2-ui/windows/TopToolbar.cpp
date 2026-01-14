@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -35,6 +35,7 @@
 #include <openrct2/config/Config.h>
 #include <openrct2/core/Numerics.hpp>
 #include <openrct2/core/String.hpp>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/entity/Staff.h>
 #include <openrct2/interface/Chat.h>
 #include <openrct2/interface/ColourWithFlags.h>
@@ -316,8 +317,8 @@ namespace OpenRCT2::Ui::Windows
             SetItems(items);
 
             WindowDropdownShowText(
-                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() + 1,
-                colours[1].withFlag(ColourFlag::translucent, true), 0, TOP_TOOLBAR_VIEW_MENU_COUNT);
+                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(),
+                colours[1].withFlag(ColourFlag::translucent, true), Dropdown::Flag::StayOpen, TOP_TOOLBAR_VIEW_MENU_COUNT);
 
             auto mvpFlags = WindowGetMain()->viewport->flags;
             gDropdown.items[DDIDX_UNDERGROUND_INSIDE].setChecked(mvpFlags & VIEWPORT_FLAG_UNDERGROUND_INSIDE);
@@ -448,7 +449,7 @@ namespace OpenRCT2::Ui::Windows
 #endif
 
             WindowDropdownShowText(
-                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() + 1,
+                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(),
                 colours[1].withFlag(ColourFlag::translucent, true), 0, i);
             gDropdown.defaultIndex = DDIDX_SHOW_MAP;
         }
@@ -515,7 +516,7 @@ namespace OpenRCT2::Ui::Windows
             }
 
             WindowDropdownShowText(
-                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() + 1,
+                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(),
                 colours[0].withFlag(ColourFlag::translucent, true), 0, num_items);
 
             // Set checkmarks
@@ -627,7 +628,7 @@ namespace OpenRCT2::Ui::Windows
             }
 
             WindowDropdownShowText(
-                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() + 1,
+                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(),
                 colours[0].withFlag(ColourFlag::translucent, true), Dropdown::Flag::StayOpen, numItems);
         }
 
@@ -651,7 +652,7 @@ namespace OpenRCT2::Ui::Windows
             SetItems(items);
 
             WindowDropdownShowText(
-                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() + 1,
+                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(),
                 colours[0].withFlag(ColourFlag::translucent, true), Dropdown::Flag::StayOpen, TOP_TOOLBAR_CHEATS_COUNT);
 
             // Disable items that are not yet available in multiplayer
@@ -727,7 +728,7 @@ namespace OpenRCT2::Ui::Windows
             gDropdown.items[DDIDX_DEBUG_PAINT] = Dropdown::ToggleOption(STR_DEBUG_DROPDOWN_DEBUG_PAINT);
 
             WindowDropdownShowText(
-                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() + 1,
+                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(),
                 colours[0].withFlag(ColourFlag::translucent, true), Dropdown::Flag::StayOpen, TOP_TOOLBAR_DEBUG_COUNT);
 
             auto* windowMgr = GetWindowManager();
@@ -771,7 +772,7 @@ namespace OpenRCT2::Ui::Windows
             gDropdown.items[DDIDX_MULTIPLAYER_RECONNECT] = Dropdown::PlainMenuLabel(STR_MULTIPLAYER_RECONNECT);
 
             WindowDropdownShowText(
-                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height() + 1,
+                { windowPos.x + widget.left, windowPos.y + widget.top }, widget.height(),
                 colours[0].withFlag(ColourFlag::translucent, true), 0, TOP_TOOLBAR_NETWORK_COUNT);
 
             gDropdown.items[DDIDX_MULTIPLAYER_RECONNECT].setDisabled(!Network::IsDesynchronised());
@@ -1268,16 +1269,16 @@ namespace OpenRCT2::Ui::Windows
                 };
 
                 uint32_t mapImageId = _imageIdByRotation[GetCurrentRotation()];
-                widgets[WIDX_MAP].image = ImageId(mapImageId, FilterPaletteID::paletteNull);
+                widgets[WIDX_MAP].image = ImageId(mapImageId, Drawing::FilterPaletteID::paletteNull);
             }
         }
 
         void ApplyAudioState()
         {
             if (!OpenRCT2::Audio::gGameSoundsOff)
-                widgets[WIDX_MUTE].image = ImageId(SPR_G2_TOOLBAR_MUTE, FilterPaletteID::paletteNull);
+                widgets[WIDX_MUTE].image = ImageId(SPR_G2_TOOLBAR_MUTE, Drawing::FilterPaletteID::paletteNull);
             else
-                widgets[WIDX_MUTE].image = ImageId(SPR_G2_TOOLBAR_UNMUTE, FilterPaletteID::paletteNull);
+                widgets[WIDX_MUTE].image = ImageId(SPR_G2_TOOLBAR_UNMUTE, Drawing::FilterPaletteID::paletteNull);
         }
 
         void ApplyFootpathPressed()
@@ -1305,7 +1306,7 @@ namespace OpenRCT2::Ui::Windows
                 if (firstItem && widgetIndex == WIDX_SEPARATOR)
                     continue;
 
-                totalWidth += widget->width() + 1;
+                totalWidth += widget->width();
                 firstItem = false;
             }
             return totalWidth;
@@ -1325,7 +1326,7 @@ namespace OpenRCT2::Ui::Windows
                 if (firstItem && widgetIndex == WIDX_SEPARATOR)
                     continue;
 
-                auto widgetWidth = widget->width();
+                auto widgetWidth = widget->width() - 1;
                 widget->left = xPos;
                 xPos += widgetWidth;
                 widget->right = xPos;
@@ -1378,7 +1379,7 @@ namespace OpenRCT2::Ui::Windows
                 AlignButtonsCentre();
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             const auto& gameState = getGameState();
             int32_t imgId;

@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -132,7 +132,7 @@ namespace OpenRCT2
         }
     }
 
-    enum CarSpriteFlag : uint8_t
+    enum class CarSpriteFlag : uint8_t
     {
         flat,
         gentleSlopes,
@@ -376,7 +376,8 @@ namespace OpenRCT2
         _legacyType.images_offset = 0;
     }
 
-    void RideObject::DrawPreview(RenderTarget& rt, [[maybe_unused]] int32_t width, [[maybe_unused]] int32_t height) const
+    void RideObject::DrawPreview(
+        Drawing::RenderTarget& rt, [[maybe_unused]] int32_t width, [[maybe_unused]] int32_t height) const
     {
         uint32_t imageId = _legacyType.images_offset;
 

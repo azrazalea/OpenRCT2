@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -404,7 +404,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void DrawPreview(RenderTarget& rt)
+        void DrawPreview(Drawing::RenderTarget& rt)
         {
             // Find preview image to draw
             PreviewImage* image = nullptr;
@@ -731,7 +731,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
 
@@ -770,9 +770,9 @@ namespace OpenRCT2::Ui::Windows
                     auto ft = Formatter();
                     ft.Add<StringId>(indicatorId);
 
-                    auto cdpi = const_cast<const RenderTarget&>(rt);
+                    auto cRT = const_cast<const RenderTarget&>(rt);
                     DrawTextEllipsised(
-                        cdpi, windowPos + ScreenCoordsXY{ widget.left + 5, widget.top + 1 }, widget.width(), strId, ft,
+                        cRT, windowPos + ScreenCoordsXY{ widget.left + 5, widget.top + 1 }, widget.width() - 1, strId, ft,
                         { COLOUR_GREY });
                 };
 
@@ -919,7 +919,7 @@ namespace OpenRCT2::Ui::Windows
             Widget* widget = &widgets[WIDX_SORT_CUSTOMISE];
 
             WindowDropdownShowTextCustomWidth(
-                { windowPos.x + widget->left - 70, windowPos.y + widget->top }, widget->height() + 1, colours[1], 0,
+                { windowPos.x + widget->left - 70, windowPos.y + widget->top }, widget->height(), colours[1], 0,
                 Dropdown::Flag::StayOpen, 7, 90);
 
             auto& config = Config::Get().general;
@@ -1077,12 +1077,12 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onScrollDraw(int32_t scrollIndex, RenderTarget& rt) override
+        void onScrollDraw(int32_t scrollIndex, Drawing::RenderTarget& rt) override
         {
             Rectangle::fill(
                 rt, { { rt.x, rt.y }, { rt.x + rt.width - 1, rt.y + rt.height - 1 } }, ColourMapA[colours[1].colour].mid_light);
 
-            const int32_t listWidth = widgets[WIDX_SCROLL].width();
+            const int32_t listWidth = widgets[WIDX_SCROLL].width() - 1;
             const auto sizeColumnLeft = widgets[WIDX_SORT_SIZE].left;
             const auto dateColumnLeft = widgets[WIDX_SORT_DATE].left;
             const int32_t dateAnchor = dateColumnLeft + maxDateWidth + kDateTimeGap;
@@ -1124,7 +1124,7 @@ namespace OpenRCT2::Ui::Windows
                 auto ft = Formatter();
                 ft.Add<StringId>(STR_STRING);
                 ft.Add<char*>(_listItems[i].name.c_str());
-                int32_t max_file_width = widgets[WIDX_SORT_NAME].width() - 15;
+                int32_t max_file_width = widgets[WIDX_SORT_NAME].width() - 16;
                 DrawTextEllipsised(rt, { 15, y }, max_file_width, stringId, ft);
 
                 // Print formatted modified date, if this is a file

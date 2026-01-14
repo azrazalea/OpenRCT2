@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -15,6 +15,7 @@
 #include "Game.h"
 #include "GameState.h"
 #include "OpenRCT2.h"
+#include "actions/ResultWithMessage.h"
 #include "drawing/Drawing.h"
 #include "entity/EntityList.h"
 #include "entity/Guest.h"
@@ -142,12 +143,12 @@ void SetupInUseSelectionFlags()
     {
         for (auto i = 0u; i < getObjectEntryGroupCount(objectType); i++)
         {
-            Editor::ClearSelectedObject(static_cast<ObjectType>(objectType), i, ObjectSelectionFlags::AllFlags);
+            Editor::ClearSelectedObject(objectType, i, ObjectSelectionFlags::AllFlags);
 
-            auto loadedObj = objectMgr.GetLoadedObject(static_cast<ObjectType>(objectType), i);
+            auto loadedObj = objectMgr.GetLoadedObject(objectType, i);
             if (loadedObj != nullptr)
             {
-                Editor::SetSelectedObject(static_cast<ObjectType>(objectType), i, ObjectSelectionFlags::Selected);
+                Editor::SetSelectedObject(objectType, i, ObjectSelectionFlags::Selected);
             }
         }
     }

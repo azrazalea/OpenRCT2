@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -115,15 +115,17 @@ public:
     void StartNewDraw();
     void FinishDraw();
 
-    void Clear(RenderTarget& rt, uint8_t paletteIndex) override;
-    void FillRect(RenderTarget& rt, uint32_t colour, int32_t x, int32_t y, int32_t w, int32_t h) override;
+    void Clear(RenderTarget& rt, PaletteIndex paletteIndex) override;
+    void FillRect(
+        RenderTarget& rt, PaletteIndex paletteIndex, int32_t x, int32_t y, int32_t w, int32_t h,
+        bool crossHatch = false) override;
     void FilterRect(
         RenderTarget& rt, FilterPaletteID palette, int32_t left, int32_t top, int32_t right, int32_t bottom) override;
-    void DrawLine(RenderTarget& rt, uint32_t colour, const ScreenLine& line) override;
+    void DrawLine(RenderTarget& rt, PaletteIndex colour, const ScreenLine& line) override;
     void DrawSprite(RenderTarget& rt, const ImageId imageId, int32_t x, int32_t y) override;
     void DrawSpriteRawMasked(
         RenderTarget& rt, int32_t x, int32_t y, const ImageId maskImage, const ImageId colourImage) override;
-    void DrawSpriteSolid(RenderTarget& rt, const ImageId image, int32_t x, int32_t y, uint8_t colour) override;
+    void DrawSpriteSolid(RenderTarget& rt, const ImageId image, int32_t x, int32_t y, PaletteIndex colour) override;
     void DrawGlyph(RenderTarget& rt, const ImageId image, int32_t x, int32_t y, const PaletteMap& palette) override;
     void DrawTTFBitmap(
         RenderTarget& rt, TextDrawInfo* info, TTFSurface* surface, int32_t x, int32_t y, uint8_t hintingThreshold) override;
@@ -175,7 +177,7 @@ public:
                 uint32_t xPixelOffset = pixelOffset;
                 xPixelOffset += (static_cast<uint8_t>(patternX - patternStartXOffset)) % patternXSpace;
 
-                auto patternPixel = pattern[patternYPos * 2 + 1];
+                auto patternPixel = static_cast<PaletteIndex>(pattern[patternYPos * 2 + 1]);
                 for (; xPixelOffset < finalPixelOffset; xPixelOffset += patternXSpace)
                 {
                     int32_t pixelX = xPixelOffset % rt.width;
@@ -518,7 +520,7 @@ public:
         return _drawingContext.get();
     }
 
-    RenderTarget* GetDrawingPixelInfo() override
+    RenderTarget* getRT() override
     {
         return &_mainRT;
     }
@@ -531,11 +533,6 @@ public:
     void InvalidateImage(uint32_t image) override
     {
         _drawingContext->GetTextureCache()->InvalidateImage(image);
-    }
-
-    RenderTarget* GetDPI()
-    {
-        return &_mainRT;
     }
 
 private:
@@ -682,14 +679,15 @@ void OpenGLDrawingContext::FinishDraw()
     _inDraw = false;
 }
 
-void OpenGLDrawingContext::Clear(RenderTarget& rt, uint8_t paletteIndex)
+void OpenGLDrawingContext::Clear(RenderTarget& rt, PaletteIndex paletteIndex)
 {
     Guard::Assert(_inDraw == true);
 
     FillRect(rt, paletteIndex, rt.x, rt.y, rt.x + rt.width, rt.y + rt.height);
 }
 
-void OpenGLDrawingContext::FillRect(RenderTarget& rt, uint32_t colour, int32_t left, int32_t top, int32_t right, int32_t bottom)
+void OpenGLDrawingContext::FillRect(
+    RenderTarget& rt, PaletteIndex paletteIndex, int32_t left, int32_t top, int32_t right, int32_t bottom, bool crossHatch)
 {
     Guard::Assert(_inDraw == true);
 
@@ -708,21 +706,16 @@ void OpenGLDrawingContext::FillRect(RenderTarget& rt, uint32_t colour, int32_t l
     command.texMaskAtlas = 0;
     command.texMaskBounds = { 0.0f, 0.0f, 0.0f, 0.0f };
     command.palettes = { 0, 0, 0 };
-    command.colour = colour & 0xFF;
+    command.colour = EnumValue(paletteIndex);
     command.bounds = { left, top, right + 1, bottom + 1 };
     command.flags = DrawRectCommand::FLAG_NO_TEXTURE;
     command.depth = _drawCount++;
     command.zoom = 1.0f;
 
-    if (colour & 0x1000000)
+    if (crossHatch)
     {
         // cross-pattern
         command.flags |= DrawRectCommand::FLAG_CROSS_HATCH;
-    }
-    else if (colour & 0x2000000)
-    {
-        assert(false);
-        // Should be FilterRect
     }
 }
 
@@ -837,7 +830,7 @@ bool OpenGLDrawingContext::CohenSutherlandLineClip(ScreenLine& line, const Rende
     }
 }
 
-void OpenGLDrawingContext::DrawLine(RenderTarget& rt, uint32_t colour, const ScreenLine& line)
+void OpenGLDrawingContext::DrawLine(RenderTarget& rt, PaletteIndex colour, const ScreenLine& line)
 {
     Guard::Assert(_inDraw == true);
 
@@ -856,7 +849,7 @@ void OpenGLDrawingContext::DrawLine(RenderTarget& rt, uint32_t colour, const Scr
     const int32_t y2 = trimmedLine.GetY2() - rt.y + clip.GetTop();
 
     command.bounds = { x1, y1, x2, y2 };
-    command.colour = colour & 0xFF;
+    command.colour = static_cast<GLuint>(colour);
     command.depth = _drawCount++;
 }
 
@@ -878,7 +871,7 @@ void OpenGLDrawingContext::DrawSprite(RenderTarget& rt, const ImageId imageId, c
 
     if (rt.zoom_level > ZoomLevel{ 0 })
     {
-        if (g1Element->flags & G1_FLAG_HAS_ZOOM_SPRITE)
+        if (g1Element->flags.has(G1Flag::hasZoomSprite))
         {
             RenderTarget zoomedRT;
             zoomedRT.bits = rt.bits;
@@ -888,10 +881,10 @@ void OpenGLDrawingContext::DrawSprite(RenderTarget& rt, const ImageId imageId, c
             zoomedRT.width = rt.width;
             zoomedRT.pitch = rt.pitch;
             zoomedRT.zoom_level = rt.zoom_level - 1;
-            DrawSprite(zoomedRT, imageId.WithIndex(imageId.GetIndex() - g1Element->zoomed_offset), x >> 1, y >> 1);
+            DrawSprite(zoomedRT, imageId.WithIndex(imageId.GetIndex() - g1Element->zoomedOffset), x >> 1, y >> 1);
             return;
         }
-        if (g1Element->flags & G1_FLAG_NO_ZOOM_DRAW)
+        if (g1Element->flags.has(G1Flag::noZoomDraw))
         {
             return;
         }
@@ -899,8 +892,8 @@ void OpenGLDrawingContext::DrawSprite(RenderTarget& rt, const ImageId imageId, c
 
     auto texture = _textureCache->GetOrLoadImageTexture(imageId);
 
-    int32_t left = x + g1Element->x_offset;
-    int32_t top = y + g1Element->y_offset;
+    int32_t left = x + g1Element->xOffset;
+    int32_t top = y + g1Element->yOffset;
 
     int32_t xModifier = 0;
     int32_t yModifier = 0;
@@ -1015,8 +1008,8 @@ void OpenGLDrawingContext::DrawSpriteRawMasked(
     const auto textureMask = _textureCache->GetOrLoadImageTexture(maskImage);
     const auto textureColour = _textureCache->GetOrLoadImageTexture(colourImage);
 
-    int32_t drawOffsetX = g1ElementMask->x_offset;
-    int32_t drawOffsetY = g1ElementMask->y_offset;
+    int32_t drawOffsetX = g1ElementMask->xOffset;
+    int32_t drawOffsetY = g1ElementMask->yOffset;
     int32_t drawWidth = std::min(g1ElementMask->width, g1ElementColour->width);
     int32_t drawHeight = std::min(g1ElementMask->height, g1ElementColour->height);
 
@@ -1063,7 +1056,7 @@ void OpenGLDrawingContext::DrawSpriteRawMasked(
     command.zoom = zoom;
 }
 
-void OpenGLDrawingContext::DrawSpriteSolid(RenderTarget& rt, const ImageId image, int32_t x, int32_t y, uint8_t colour)
+void OpenGLDrawingContext::DrawSpriteSolid(RenderTarget& rt, const ImageId image, int32_t x, int32_t y, PaletteIndex colour)
 {
     Guard::Assert(_inDraw == true);
 
@@ -1075,8 +1068,8 @@ void OpenGLDrawingContext::DrawSpriteSolid(RenderTarget& rt, const ImageId image
 
     const auto texture = _textureCache->GetOrLoadImageTexture(image);
 
-    int32_t drawOffsetX = g1Element->x_offset;
-    int32_t drawOffsetY = g1Element->y_offset;
+    int32_t drawOffsetX = g1Element->xOffset;
+    int32_t drawOffsetY = g1Element->yOffset;
     int32_t drawWidth = static_cast<uint16_t>(g1Element->width);
     int32_t drawHeight = static_cast<uint16_t>(g1Element->height);
 
@@ -1109,7 +1102,7 @@ void OpenGLDrawingContext::DrawSpriteSolid(RenderTarget& rt, const ImageId image
     command.texMaskBounds = texture.coords;
     command.palettes = { 0, 0, 0 };
     command.flags = DrawRectCommand::FLAG_NO_TEXTURE | DrawRectCommand::FLAG_MASK;
-    command.colour = colour & 0xFF;
+    command.colour = static_cast<GLuint>(colour);
     command.bounds = { left, top, right, bottom };
     command.depth = _drawCount++;
     command.zoom = 1.0f;
@@ -1127,8 +1120,8 @@ void OpenGLDrawingContext::DrawGlyph(RenderTarget& rt, const ImageId image, int3
 
     const auto texture = _textureCache->GetOrLoadGlyphTexture(image, palette);
 
-    int32_t left = x + g1Element->x_offset;
-    int32_t top = y + g1Element->y_offset;
+    int32_t left = x + g1Element->xOffset;
+    int32_t top = y + g1Element->yOffset;
     int32_t right = left + static_cast<uint16_t>(g1Element->width);
     int32_t bottom = top + static_cast<uint16_t>(g1Element->height);
 
@@ -1229,7 +1222,7 @@ void OpenGLDrawingContext::DrawTTFBitmap(
             command.texMaskBounds = { 0.0f, 0.0f, 0.0f, 0.0f };
             command.palettes = { 0, 0, 0 };
             command.flags = DrawRectCommand::FLAG_TTF_TEXT;
-            command.colour = info->palette[3];
+            command.colour = static_cast<GLuint>(info->palette.shadowOutline);
             command.bounds = b;
             command.depth = _drawCount++;
             command.zoom = 1.0f;
@@ -1245,7 +1238,7 @@ void OpenGLDrawingContext::DrawTTFBitmap(
         command.texMaskBounds = { 0.0f, 0.0f, 0.0f, 0.0f };
         command.palettes = { 0, 0, 0 };
         command.flags = DrawRectCommand::FLAG_TTF_TEXT;
-        command.colour = info->palette[3];
+        command.colour = static_cast<GLuint>(info->palette.shadowOutline);
         command.bounds = { left + 1, top + 1, right + 1, bottom + 1 };
         command.depth = _drawCount++;
         command.zoom = 1.0f;
@@ -1259,7 +1252,7 @@ void OpenGLDrawingContext::DrawTTFBitmap(
     command.texMaskBounds = { 0.0f, 0.0f, 0.0f, 0.0f };
     command.palettes = { 0, 0, 0 };
     command.flags = DrawRectCommand::FLAG_TTF_TEXT | (hintingThreshold << 8);
-    command.colour = info->palette[1];
+    command.colour = static_cast<GLuint>(info->palette.fill);
     command.bounds = { left, top, right, bottom };
     command.depth = _drawCount++;
     command.zoom = 1.0f;
@@ -1349,7 +1342,7 @@ ScreenRect OpenGLDrawingContext::CalculateClipping(const RenderTarget& rt) const
 {
     // mber: Calculating the screen coordinates by dividing the difference between pointers like this is a dirty hack.
     //       It's also quite slow. In future the drawing code needs to be refactored to avoid this somehow.
-    const RenderTarget* mainRT = _engine.GetDPI();
+    const RenderTarget* mainRT = _engine.getRT();
     const int32_t bytesPerRow = mainRT->LineStride();
     const int32_t bitsOffset = static_cast<int32_t>(rt.bits - mainRT->bits);
     #ifndef NDEBUG

@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -18,6 +18,7 @@
 #include <openrct2/OpenRCT2.h>
 #include <openrct2/SpriteIds.h>
 #include <openrct2/config/Config.h>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
 #include <openrct2/entity/EntityRegistry.h>
 #include <openrct2/entity/Guest.h>
@@ -89,7 +90,7 @@ namespace OpenRCT2::Ui::Windows
                     : colours[0].colour);
         }
 
-        void DrawLeftPanel(RenderTarget& rt)
+        void DrawLeftPanel(Drawing::RenderTarget& rt)
         {
             const auto& leftPanelWidget = widgets[WIDX_LEFT_OUTSET];
 
@@ -154,7 +155,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void DrawParkRating(RenderTarget& rt, int32_t colour, const ScreenCoordsXY& coords, uint8_t factor)
+        void DrawParkRating(Drawing::RenderTarget& rt, int32_t colour, const ScreenCoordsXY& coords, uint8_t factor)
         {
             int16_t bar_width = (factor * 114) / 255;
             Rectangle::fillInset(
@@ -175,7 +176,7 @@ namespace OpenRCT2::Ui::Windows
             GfxDrawSprite(rt, ImageId(SPR_RATING_HIGH), coords + ScreenCoordsXY{ 114, 0 });
         }
 
-        void DrawRightPanel(RenderTarget& rt)
+        void DrawRightPanel(Drawing::RenderTarget& rt)
         {
             const auto& rightPanelWidget = widgets[WIDX_RIGHT_OUTSET];
 
@@ -237,7 +238,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void DrawNewsItem(RenderTarget& rt)
+        void DrawNewsItem(Drawing::RenderTarget& rt)
         {
             const auto& middleOutsetWidget = widgets[WIDX_MIDDLE_OUTSET];
             auto* newsItem = News::GetItem(0);
@@ -252,7 +253,7 @@ namespace OpenRCT2::Ui::Windows
 
             // Text
             auto screenCoords = windowPos + ScreenCoordsXY{ middleOutsetWidget.midX(), middleOutsetWidget.top + 11 };
-            int32_t itemWidth = middleOutsetWidget.width() - 62;
+            int32_t itemWidth = middleOutsetWidget.width() - 63;
             DrawNewsTicker(
                 rt, screenCoords, itemWidth, COLOUR_BRIGHT_GREEN, STR_BOTTOM_TOOLBAR_NEWS_TEXT, newsItem->text,
                 newsItem->ticks);
@@ -271,7 +272,7 @@ namespace OpenRCT2::Ui::Windows
                         break;
 
                     RenderTarget clippedRT;
-                    if (!ClipDrawPixelInfo(clippedRT, rt, screenCoords + ScreenCoordsXY{ 1, 1 }, 22, 22))
+                    if (!ClipRenderTarget(clippedRT, rt, screenCoords + ScreenCoordsXY{ 1, 1 }, 22, 22))
                     {
                         break;
                     }
@@ -353,7 +354,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void DrawMiddlePanel(RenderTarget& rt)
+        void DrawMiddlePanel(Drawing::RenderTarget& rt)
         {
             Widget* middleOutsetWidget = &widgets[WIDX_MIDDLE_OUTSET];
 
@@ -368,7 +369,7 @@ namespace OpenRCT2::Ui::Windows
 
             ScreenCoordsXY middleWidgetCoords(
                 windowPos.x + middleOutsetWidget->midX(), windowPos.y + middleOutsetWidget->top + line_height + 1);
-            int32_t panelWidth = middleOutsetWidget->width() - 62;
+            int32_t panelWidth = middleOutsetWidget->width() - 63;
 
             // Check if there is a map tooltip to draw
             StringId stringId;
@@ -620,7 +621,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             const auto& leftWidget = widgets[WIDX_LEFT_OUTSET];
             const auto& rightWidget = widgets[WIDX_RIGHT_OUTSET];

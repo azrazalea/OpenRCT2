@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -15,7 +15,6 @@
 #include "../../SpriteIds.h"
 #include "../../config/Config.h"
 #include "../../core/Numerics.hpp"
-#include "../../drawing/Drawing.h"
 #include "../../entity/EntityRegistry.h"
 #include "../../entity/PatrolArea.h"
 #include "../../entity/Peep.h"
@@ -42,6 +41,7 @@
 #include <iterator>
 
 using namespace OpenRCT2;
+using namespace OpenRCT2::Drawing;
 
 // Needed to make the sign appear above footpaths.
 static constexpr int16_t ForSaleSignZOffset = 3;
@@ -256,7 +256,7 @@ static bool SurfaceShouldSmoothSelf(const TerrainSurfaceObject* surfaceObject)
     if (surfaceObject == nullptr)
         return false;
 
-    return surfaceObject->Flags & TerrainSurfaceFlags::smoothWithSelf;
+    return surfaceObject->Flags.has(TerrainSurfaceFlag::smoothWithSelf);
 }
 
 static bool SurfaceShouldSmooth(const TerrainSurfaceObject* surfaceObject)
@@ -264,7 +264,7 @@ static bool SurfaceShouldSmooth(const TerrainSurfaceObject* surfaceObject)
     if (surfaceObject == nullptr)
         return false;
 
-    return surfaceObject->Flags & TerrainSurfaceFlags::smoothWithOther;
+    return surfaceObject->Flags.has(TerrainSurfaceFlag::smoothWithOther);
 }
 
 static ImageId GetEdgeImageWithOffset(const TerrainEdgeObject* edgeObject, uint32_t offset)
@@ -935,7 +935,7 @@ void PaintSurface(PaintSession& session, uint8_t direction, uint16_t height, con
     session.Flags |= PaintSessionFlags::PassedSurface;
     session.Surface = &tileElement;
 
-    const auto zoomLevel = session.DPI.zoom_level;
+    const auto zoomLevel = session.rt.zoom_level;
     const uint8_t rotation = session.CurrentRotation;
     const uint8_t surfaceShape = ViewportSurfacePaintSetupGetRelativeSlope(tileElement, rotation);
     const CoordsXY& base = session.SpritePosition;
@@ -1136,7 +1136,7 @@ void PaintSurface(PaintSession& session, uint8_t direction, uint16_t height, con
             {
                 auto [waterHeight, waterSurfaceShape] = SurfaceGetHeightAboveWater(tileElement, height, surfaceShape);
 
-                const auto fpId = FilterPaletteID::paletteGlassLightPurple;
+                const auto fpId = FilterPaletteID::paletteSceneryGroundMarker;
                 const auto imageId1 = ImageId(SPR_TERRAIN_SELECTION_CORNER + Byte97B444[surfaceShape], fpId);
                 PaintAttachToPreviousPS(session, imageId1, 0, 0);
 
@@ -1168,7 +1168,7 @@ void PaintSurface(PaintSession& session, uint8_t direction, uint16_t height, con
     {
         const CoordsXY& pos = session.MapPosition;
 
-        for (const auto& tile : gMapSelectionTiles)
+        for (const auto& tile : MapSelection::getSelectedTiles())
         {
             if (tile.x != pos.x || tile.y != pos.y)
             {

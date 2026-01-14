@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -28,6 +28,7 @@
 #include <openrct2/config/Config.h>
 #include <openrct2/core/Console.hpp>
 #include <openrct2/core/Guard.hpp>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/entity/EntityRegistry.h>
 #include <openrct2/interface/Viewport.h>
 #include <openrct2/rct2/T6Exporter.h>
@@ -870,7 +871,7 @@ public:
             {
                 if (w->flags.has(WindowFlag::dead))
                     continue;
-                if (!(w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront, WindowFlag::noAutoClose)))
+                if (!w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront, WindowFlag::noAutoClose))
                 {
                     Close(*w.get());
                     break;
@@ -892,7 +893,7 @@ public:
                 }
             }
         }
-        else if (!(flags.has(WindowFlag::stickToFront)))
+        else if (!flags.has(WindowFlag::stickToFront))
         {
             for (auto it = gWindowList.rbegin(); it != gWindowList.rend(); it++)
             {
@@ -911,7 +912,7 @@ public:
         wp->flags = flags;
 
         // Play sounds and flash the window
-        if (!(flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront)))
+        if (!flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront))
         {
             wp->flash();
             OpenRCT2::Audio::Play(OpenRCT2::Audio::SoundId::windowOpen, 0, pos.x + (windowSize.width / 2));
@@ -972,7 +973,7 @@ public:
             {
                 if (w->flags.has(WindowFlag::dead))
                     continue;
-                if (!(w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront, WindowFlag::noAutoClose)))
+                if (!w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront, WindowFlag::noAutoClose))
                 {
                     foundW = w.get();
                     break;
@@ -1015,7 +1016,7 @@ public:
         // Now close the collected windows
         for (auto* wnd : windowsToClose)
         {
-            if (!(wnd->flags.has(WindowFlag::dead)))
+            if (!wnd->flags.has(WindowFlag::dead))
             {
                 Close(*wnd);
             }
@@ -1061,7 +1062,7 @@ public:
                 return;
         }
 
-        auto pred = [](WindowBase* w) -> bool { return !(w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront)); };
+        auto pred = [](WindowBase* w) -> bool { return !w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront); };
         CloseByCondition(pred, WindowCloseFlags::CloseSingle);
     }
 
@@ -1074,14 +1075,14 @@ public:
     {
         CloseByClass(WindowClass::dropdown);
         CloseByCondition(
-            [](WindowBase* w) -> bool { return !(w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront)); });
+            [](WindowBase* w) -> bool { return !w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront); });
     }
 
     void CloseAllExceptClass(WindowClass cls) override
     {
         CloseByClass(WindowClass::dropdown);
         CloseByCondition([cls](WindowBase* w) -> bool {
-            return w->classification != cls && !(w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront));
+            return w->classification != cls && !w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront);
         });
     }
 
@@ -1090,7 +1091,7 @@ public:
      */
     void CloseAllExceptFlags(WindowFlags flags) override
     {
-        CloseByCondition([flags](WindowBase* w) -> bool { return !(w->flags.hasAny(flags)); });
+        CloseByCondition([flags](WindowBase* w) -> bool { return !w->flags.hasAny(flags); });
     }
 
     /**
@@ -1102,7 +1103,7 @@ public:
         CloseByCondition([cls, number](WindowBase* w) -> bool {
             return (
                 !(w->number == number && w->classification == cls)
-                && !(w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront)));
+                && !w->flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront));
         });
     }
 
@@ -1335,7 +1336,7 @@ public:
      */
     WindowBase* BringToFront(WindowBase& w) override
     {
-        if (!(w.flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront)))
+        if (!w.flags.hasAny(WindowFlag::stickToBack, WindowFlag::stickToFront))
         {
             auto itSourcePos = WindowGetIterator(&w);
             if (itSourcePos != gWindowList.end())
@@ -1349,7 +1350,7 @@ public:
                     {
                         continue;
                     }
-                    if (!(w2->flags.has(WindowFlag::stickToFront)))
+                    if (!w2->flags.has(WindowFlag::stickToFront))
                     {
                         // base() returns the next element in the list, so we need to decrement it.
                         itDestPos = std::prev(it.base());

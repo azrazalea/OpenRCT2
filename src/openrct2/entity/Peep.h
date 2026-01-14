@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -421,15 +421,16 @@ public: // Peep
     // TODO: Make these private again when done refactoring
 public: // Peep
     [[nodiscard]] bool CheckForPath();
-    bool ShouldWaitForLevelCrossing() const;
-    bool IsOnLevelCrossing() const;
-    bool IsOnPathBlockedByVehicle() const;
     std::pair<uint8_t, OpenRCT2::TileElement*> PerformNextAction();
     [[nodiscard]] int32_t GetZOnSlope(int32_t tile_x, int32_t tile_y);
     void SwitchNextAnimationType();
     [[nodiscard]] PeepAnimationType GetAnimationType();
 
 protected:
+    bool ShouldWaitForLevelCrossing() const;
+    bool IsOnLevelCrossing() const;
+    bool IsOnPathBlockedByVehicle() const;
+    void UpdateWaitingAtCrossing();
     void UpdateFalling();
     void Update1();
     void UpdatePicked();

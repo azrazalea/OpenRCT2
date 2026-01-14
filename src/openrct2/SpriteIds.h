@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -23,7 +23,7 @@ enum : ImageIndex
     SPR_DEFAULT_PALETTE = 1532,
 
     SPR_SCROLLING_TEXT_LEGACY_START = 1542,
-    SPR_SCROLLING_TEXT_LEGACY_END = SPR_SCROLLING_TEXT_LEGACY_START + OpenRCT2::kMaxScrollingTextLegacyEntries,
+    SPR_SCROLLING_TEXT_LEGACY_END = SPR_SCROLLING_TEXT_LEGACY_START + OpenRCT2::Drawing::ScrollingText::kMaxLegacyEntries,
     SPR_SCROLLING_TEXT_DEFAULT = 1574,
 
     SPR_EDGE_ROCK_BASE = 1579,
@@ -1809,7 +1809,7 @@ enum : ImageIndex
     SPR_CSG_END = SPR_CSG_BEGIN + OpenRCT2::RCT1::Limits::kNumLLCsgEntries,
 
     SPR_SCROLLING_TEXT_START = SPR_CSG_END,
-    SPR_SCROLLING_TEXT_END = SPR_SCROLLING_TEXT_START + OpenRCT2::kMaxScrollingTextEntries,
+    SPR_SCROLLING_TEXT_END = SPR_SCROLLING_TEXT_START + OpenRCT2::Drawing::ScrollingText::kMaxEntries,
 
     SPR_IMAGE_LIST_LENGTH = 1000000,
     SPR_IMAGE_LIST_BEGIN = SPR_SCROLLING_TEXT_END,

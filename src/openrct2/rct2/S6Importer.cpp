@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -25,7 +25,6 @@
 #include "../entity/PatrolArea.h"
 #include "../entity/Staff.h"
 #include "../localisation/Formatting.h"
-#include "../object/ObjectLimits.h"
 #include "../object/ObjectList.h"
 #include "../object/ObjectManager.h"
 #include "../object/ObjectRepository.h"
@@ -38,10 +37,10 @@
 #include "../rct12/RCT12.h"
 #include "../rct12/ScenarioPatcher.h"
 #include "../rct2/RCT2.h"
+#include "../ride/Ride.h"
 #include "../ride/RideData.h"
 #include "../ride/Vehicle.h"
 #include "../sawyer_coding/SawyerChunkReader.h"
-#include "../sawyer_coding/SawyerCoding.h"
 #include "../scenario/Scenario.h"
 #include "../scenario/ScenarioRepository.h"
 #include "../scenario/ScenarioSources.h"
@@ -90,6 +89,7 @@ namespace OpenRCT2::RCT2
         ObjectEntryIndex _pathToRailingMap[16];
         RCT12::EntryList _terrainSurfaceEntries;
         RCT12::EntryList _terrainEdgeEntries;
+        RCT12::EntryList _stationEntries;
 
     public:
         S6Importer(IObjectRepository& objectRepository)
@@ -612,6 +612,8 @@ namespace OpenRCT2::RCT2
 
             // Add default edges
             _terrainEdgeEntries.AddRange(DefaultTerrainEdges);
+
+            _stationEntries.AddRange(kDefaultStationStyles);
         }
 
         void ConvertScenarioStringsToUTF8(GameState_t& gameState)
@@ -929,7 +931,8 @@ namespace OpenRCT2::RCT2
             dst->reliability = src->reliability;
             dst->unreliabilityFactor = src->unreliabilityFactor;
             dst->downtime = src->downtime;
-            dst->inspectionInterval = src->inspectionInterval;
+            auto clampedInspectionInterval = std::clamp<uint8_t>(src->inspectionInterval, 0, EnumValue(RideInspection::never));
+            dst->inspectionInterval = static_cast<RideInspection>(clampedInspectionInterval);
             dst->lastInspection = src->lastInspection;
 
             for (uint8_t i = 0; i < Limits::kDowntimeHistorySize; i++)
@@ -971,11 +974,11 @@ namespace OpenRCT2::RCT2
             }
             dst->music = musicStyle;
 
+            auto entranceStyle = src->entranceStyle;
             // In SV7, "plain" entrances are invisible.
-            auto entranceStyle = kObjectEntryIndexNull;
-            if (!_isSV7 && GetRideTypeDescriptor(dst->type).HasFlag(RtdFlag::hasEntranceAndExit))
+            if (_isSV7)
             {
-                entranceStyle = src->entranceStyle;
+                entranceStyle = _stationEntries.GetOrAddEntry(kNoEntranceNoPlatformIdentifier);
             }
             dst->entranceStyle = entranceStyle;
 
@@ -1056,7 +1059,7 @@ namespace OpenRCT2::RCT2
             }
             else
             {
-                dst.ProximityTrackType = TrackElemType::None;
+                dst.ProximityTrackType = TrackElemType::none;
             }
             dst.ProximityBaseHeight = src.ProximityBaseHeight;
             dst.ProximityTotal = src.ProximityTotal;
@@ -1088,7 +1091,7 @@ namespace OpenRCT2::RCT2
 
         void ImportRideMeasurement(RideMeasurement& dst, const RCT12RideMeasurement& src)
         {
-            dst.flags = src.Flags;
+            dst.flags.holder = src.Flags;
             dst.last_use_tick = src.LastUseTick;
             dst.num_items = src.NumItems;
             dst.current_item = src.CurrentItem;
@@ -1134,7 +1137,7 @@ namespace OpenRCT2::RCT2
             dst->type = RCTEntryIndexToOpenRCT2EntryIndex(src->Type);
             dst->flags = src->flags;
 
-            if (!(src->flags.has(BannerFlag::linkedToRide)) && IsUserStringID(src->StringID))
+            if (!src->flags.has(BannerFlag::linkedToRide) && IsUserStringID(src->StringID))
             {
                 dst->text = GetUserString(src->StringID);
             }
@@ -1391,12 +1394,12 @@ namespace OpenRCT2::RCT2
                     dst2->SetStationIndex(StationIndex::FromUnderlying(src2->GetStationIndex()));
                     dst2->SetHasGreenLight(src2->HasGreenLight());
                     // Brakes import as closed to preserve legacy behaviour
-                    dst2->SetBrakeClosed(src2->BlockBrakeClosed() || (trackType == TrackElemType::Brakes));
+                    dst2->SetBrakeClosed(src2->BlockBrakeClosed() || (trackType == TrackElemType::brakes));
                     dst2->SetIsIndestructible(src2->IsIndestructible());
                     // Skipping IsHighlighted()
 
                     // Import block brakes to keep legacy behaviour
-                    if (trackType == TrackElemType::BlockBrakes)
+                    if (trackType == TrackElemType::blockBrakes)
                     {
                         dst2->SetBrakeBoosterSpeed(kRCT2DefaultBlockBrakeSpeed);
                     }
@@ -1404,7 +1407,7 @@ namespace OpenRCT2::RCT2
                     {
                         dst2->SetBrakeBoosterSpeed(src2->GetBrakeBoosterSpeed());
                     }
-                    else if (trackType == TrackElemType::OnRidePhoto)
+                    else if (trackType == TrackElemType::onRidePhoto)
                     {
                         dst2->SetPhotoTimeout(src2->GetPhotoTimeout());
                     }
@@ -1920,9 +1923,26 @@ namespace OpenRCT2::RCT2
 
             AppendRequiredObjects(objectList, ObjectType::terrainSurface, _terrainSurfaceEntries);
             AppendRequiredObjects(objectList, ObjectType::terrainEdge, _terrainEdgeEntries);
+
+            const bool hasInvisibleEntrance = std::any_of(std::begin(_s6.Rides), std::end(_s6.Rides), [](Ride& ride) {
+                if (ride.type == kRideTypeNull)
+                    return false;
+
+                return ride.entranceStyle == RCT12_STATION_STYLE_INVISIBLE;
+            });
+            if (hasInvisibleEntrance)
+            {
+                _stationEntries.GetOrAddEntry(GetStationIdentifierFromStyle(RCT12_STATION_STYLE_INVISIBLE));
+            }
+            if (_isSV7)
+            {
+                _stationEntries.GetOrAddEntry(kNoEntranceNoPlatformIdentifier);
+            }
+            AppendRequiredObjects(objectList, ObjectType::station, _stationEntries);
+
             AppendRequiredObjects(
                 objectList, ObjectType::peepNames, std::vector<std::string_view>({ "rct2.peep_names.original" }));
-            RCT12AddDefaultObjects(objectList);
+            RCT12AddDefaultMusic(objectList);
 
             // Normalise the name to make the scenario as recognisable as possible
             auto normalisedName = ScenarioSources::NormaliseName(_s6.Info.Name);
@@ -1965,7 +1985,7 @@ namespace OpenRCT2::RCT2
         dst->track_progress = src->TrackProgress;
         dst->TrackLocation = { src->TrackX, src->TrackY, src->TrackZ };
         if (src->BoatLocation.IsNull() || static_cast<RideMode>(ride.mode) != RideMode::boatHire
-            || src->Status != static_cast<uint8_t>(::Vehicle::Status::TravellingBoat))
+            || src->Status != static_cast<uint8_t>(::Vehicle::Status::travellingBoat))
         {
             dst->BoatLocation.SetNull();
             dst->SetTrackDirection(src->GetTrackDirection());
@@ -1982,10 +2002,10 @@ namespace OpenRCT2::RCT2
                 // booster track but this is unlikely since only two rides have spinning control track - by default they load as
                 // booster.
                 TileElement* tileElement2 = MapGetTrackElementAtOfTypeSeq(
-                    dst->TrackLocation, TrackElemType::RotationControlToggle, 0);
+                    dst->TrackLocation, TrackElemType::rotationControlToggle, 0);
 
                 if (tileElement2 != nullptr)
-                    dst->SetTrackType(TrackElemType::RotationControlToggle);
+                    dst->SetTrackType(TrackElemType::rotationControlToggle);
             }
             else if (src->GetTrackType() == OpenRCT2::RCT12::TrackElemType::blockBrakes)
             {
@@ -1996,7 +2016,7 @@ namespace OpenRCT2::RCT2
         {
             dst->BoatLocation = TileCoordsXY{ src->BoatLocation.x, src->BoatLocation.y }.ToCoordsXY();
             dst->SetTrackDirection(0);
-            dst->SetTrackType(OpenRCT2::TrackElemType::Flat);
+            dst->SetTrackType(OpenRCT2::TrackElemType::flat);
         }
 
         dst->next_vehicle_on_train = EntityId::FromUnderlying(src->NextVehicleOnTrain);
@@ -2010,8 +2030,8 @@ namespace OpenRCT2::RCT2
         dst->current_time = src->CurrentTime;
         dst->crash_z = src->CrashZ;
 
-        ::Vehicle::Status statusSrc = ::Vehicle::Status::MovingToEndOfStation;
-        if (src->Status <= static_cast<uint8_t>(::Vehicle::Status::StoppedByBlockBrakes))
+        ::Vehicle::Status statusSrc = ::Vehicle::Status::movingToEndOfStation;
+        if (src->Status <= static_cast<uint8_t>(::Vehicle::Status::stoppedByBlockBrakes))
         {
             statusSrc = static_cast<::Vehicle::Status>(src->Status);
         }

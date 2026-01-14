@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -212,11 +212,11 @@ namespace OpenRCT2::Ui::Windows
                 int32_t yOffset = 0;
                 if (i > 5)
                 {
-                    yOffset = -(widget->height() + 5 + (i * 12));
+                    yOffset = -(widget->height() - 1 + 5 + (i * 12));
                 }
 
                 WindowDropdownShowText(
-                    windowPos + ScreenCoordsXY{ widget->left, widget->top + yOffset }, widget->height() + 1,
+                    windowPos + ScreenCoordsXY{ widget->left, widget->top + yOffset }, widget->height(),
                     colours[0].withFlag(ColourFlag::translucent, true), Dropdown::Flag::StayOpen, i);
             }
         }
@@ -275,7 +275,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             Rectangle::filter(rt, _filterRect, FilterPaletteID::palette51);
             drawWidgets(rt);

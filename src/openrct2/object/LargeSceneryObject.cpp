@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -15,9 +15,9 @@
 #include "../core/Json.hpp"
 #include "../core/Memory.hpp"
 #include "../drawing/Drawing.h"
+#include "../drawing/ScrollingText.h"
 #include "../interface/Cursors.h"
 #include "../localisation/Language.h"
-#include "../world/Banner.h"
 #include "../world/Location.hpp"
 
 #include <iterator>
@@ -143,7 +143,7 @@ namespace OpenRCT2
         _baseImageId = _legacyType.image = 0;
     }
 
-    void LargeSceneryObject::DrawPreview(RenderTarget& rt, int32_t width, int32_t height) const
+    void LargeSceneryObject::DrawPreview(Drawing::RenderTarget& rt, int32_t width, int32_t height) const
     {
         auto screenCoords = ScreenCoordsXY{ width / 2, (height / 2) - 39 };
 

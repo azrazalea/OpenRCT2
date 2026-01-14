@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -15,13 +15,17 @@
 #include "Font.h"
 
 struct ScreenCoordsXY;
-struct RenderTarget;
 
 using OpenRCT2::ColourWithFlags;
 
 namespace OpenRCT2
 {
     class Formatter;
+}
+
+namespace OpenRCT2::Drawing
+{
+    struct RenderTarget;
 }
 
 enum class TextAlignment
@@ -206,17 +210,19 @@ struct TextPaint
     }
 };
 
-void DrawTextBasic(RenderTarget& rt, const ScreenCoordsXY& coords, StringId format);
-void DrawTextEllipsised(RenderTarget& rt, const ScreenCoordsXY& coords, int32_t width, StringId format);
-int32_t DrawTextWrapped(RenderTarget& rt, const ScreenCoordsXY& coords, int32_t width, StringId format);
+void DrawTextBasic(OpenRCT2::Drawing::RenderTarget& rt, const ScreenCoordsXY& coords, StringId format);
+void DrawTextEllipsised(OpenRCT2::Drawing::RenderTarget& rt, const ScreenCoordsXY& coords, int32_t width, StringId format);
+int32_t DrawTextWrapped(OpenRCT2::Drawing::RenderTarget& rt, const ScreenCoordsXY& coords, int32_t width, StringId format);
 
 void DrawText(
-    RenderTarget& rt, const ScreenCoordsXY& coords, const TextPaint& paint, const_utf8string text, bool noFormatting = false);
+    OpenRCT2::Drawing::RenderTarget& rt, const ScreenCoordsXY& coords, const TextPaint& paint, const_utf8string text,
+    bool noFormatting = false);
 void DrawTextBasic(
-    RenderTarget& rt, const ScreenCoordsXY& coords, StringId format, const OpenRCT2::Formatter& ft, TextPaint textPaint = {});
+    OpenRCT2::Drawing::RenderTarget& rt, const ScreenCoordsXY& coords, StringId format, const OpenRCT2::Formatter& ft,
+    TextPaint textPaint = {});
 void DrawTextEllipsised(
-    RenderTarget& rt, const ScreenCoordsXY& coords, int32_t width, StringId format, const OpenRCT2::Formatter& ft,
-    TextPaint textPaint = {});
+    OpenRCT2::Drawing::RenderTarget& rt, const ScreenCoordsXY& coords, int32_t width, StringId format,
+    const OpenRCT2::Formatter& ft, TextPaint textPaint = {});
 int32_t DrawTextWrapped(
-    RenderTarget& rt, const ScreenCoordsXY& coords, int32_t width, StringId format, const OpenRCT2::Formatter& ft,
-    TextPaint textPaint = {});
+    OpenRCT2::Drawing::RenderTarget& rt, const ScreenCoordsXY& coords, int32_t width, StringId format,
+    const OpenRCT2::Formatter& ft, TextPaint textPaint = {});

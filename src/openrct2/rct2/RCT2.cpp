@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -18,6 +18,7 @@
 #include "../ride/Track.h"
 
 #include <cstdint>
+#include <cstring>
 
 namespace OpenRCT2::RCT2
 {
@@ -119,7 +120,7 @@ namespace OpenRCT2::RCT2
             case OriginalRideClass::wildMouse:
                 // Boosters share their ID with the Spinning Control track.
                 if (origTrackType == OpenRCT2::RCT12::TrackElemType::rotationControlToggleAlias)
-                    return OpenRCT2::TrackElemType::RotationControlToggle;
+                    return OpenRCT2::TrackElemType::rotationControlToggle;
                 return static_cast<OpenRCT2::TrackElemType>(origTrackType);
             case OriginalRideClass::regular:
             default:
@@ -129,7 +130,7 @@ namespace OpenRCT2::RCT2
 
     OpenRCT2::RCT12::TrackElemType OpenRCT2TrackTypeToRCT2(OpenRCT2::TrackElemType origTrackType)
     {
-        if (origTrackType == TrackElemType::RotationControlToggle)
+        if (origTrackType == TrackElemType::rotationControlToggle)
             return OpenRCT2::RCT12::TrackElemType::rotationControlToggleAlias;
 
         // This function is safe to run this way round.

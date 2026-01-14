@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -19,9 +19,10 @@
 #include <openrct2/Input.h>
 #include <openrct2/OpenRCT2.h>
 #include <openrct2/SpriteIds.h>
+#include <openrct2/actions/ResultWithMessage.h>
 #include <openrct2/audio/Audio.h>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
-#include <openrct2/entity/EntityList.h>
 #include <openrct2/management/Research.h>
 #include <openrct2/scenario/Scenario.h>
 #include <openrct2/scripting/ScriptEngine.h>
@@ -125,7 +126,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             auto drawPreviousButton = widgets[WIDX_PREVIOUS_STEP_BUTTON].type != WidgetType::empty;
             auto drawNextButton = widgets[WIDX_NEXT_STEP_BUTTON].type != WidgetType::empty;
@@ -334,7 +335,7 @@ namespace OpenRCT2::Ui::Windows
             widgets[WIDX_NEXT_IMAGE].type = WidgetType::empty;
         }
 
-        void DrawLeftButtonBack(RenderTarget& rt)
+        void DrawLeftButtonBack(Drawing::RenderTarget& rt)
         {
             const auto& previousWidget = widgets[WIDX_PREVIOUS_IMAGE];
             auto leftTop = windowPos + ScreenCoordsXY{ previousWidget.left, previousWidget.top };
@@ -342,7 +343,7 @@ namespace OpenRCT2::Ui::Windows
             Rectangle::filter(rt, { leftTop, rightBottom }, FilterPaletteID::palette51);
         }
 
-        void DrawLeftButton(RenderTarget& rt)
+        void DrawLeftButton(Drawing::RenderTarget& rt)
         {
             const auto topLeft = windowPos
                 + ScreenCoordsXY{ widgets[WIDX_PREVIOUS_IMAGE].left + 1, widgets[WIDX_PREVIOUS_IMAGE].top + 1 };
@@ -374,7 +375,7 @@ namespace OpenRCT2::Ui::Windows
             DrawTextBasic(rt, { textX, textY + 10 }, stringId, {}, { textColour, TextAlignment::centre });
         }
 
-        void DrawRightButtonBack(RenderTarget& rt)
+        void DrawRightButtonBack(Drawing::RenderTarget& rt)
         {
             auto nextWidget = widgets[WIDX_NEXT_IMAGE];
             auto leftTop = windowPos + ScreenCoordsXY{ nextWidget.left, nextWidget.top };
@@ -382,7 +383,7 @@ namespace OpenRCT2::Ui::Windows
             Rectangle::filter(rt, { leftTop, rightBottom }, FilterPaletteID::palette51);
         }
 
-        void DrawRightButton(RenderTarget& rt)
+        void DrawRightButton(Drawing::RenderTarget& rt)
         {
             const auto topLeft = windowPos
                 + ScreenCoordsXY{ widgets[WIDX_NEXT_IMAGE].left + 1, widgets[WIDX_NEXT_IMAGE].top + 1 };
@@ -415,7 +416,7 @@ namespace OpenRCT2::Ui::Windows
             DrawTextBasic(rt, { textX, textY + 10 }, stringId, {}, { textColour, TextAlignment::centre });
         }
 
-        void DrawStepText(RenderTarget& rt)
+        void DrawStepText(Drawing::RenderTarget& rt)
         {
             int16_t stateX = (widgets[WIDX_PREVIOUS_IMAGE].right + widgets[WIDX_NEXT_IMAGE].left) / 2 + windowPos.x;
             int16_t stateY = height - 0x0C + windowPos.y;

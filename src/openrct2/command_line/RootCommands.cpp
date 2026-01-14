@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -140,6 +140,7 @@ namespace OpenRCT2
         DefineCommand("set-rct2", "<path>",                 kStandardOptions, HandleCommandSetRCT2),
         DefineCommand("scan-objects", "<path>",             kStandardOptions, HandleCommandScanObjects),
         DefineCommand("handle-uri", "openrct2://.../",      kStandardOptions, CommandLine::HandleCommandUri),
+        DefineCommand("trigger-steam-download", "",         kStandardOptions, CommandLine::HandleCommandTriggerSteamDownload),
 
     #if defined(_WIN32)
         DefineCommand("register-shell", "", RegisterShellOptions, HandleCommandRegisterShell),
@@ -515,5 +516,15 @@ namespace OpenRCT2
         Console::WriteLine();
 
         // TODO Print other potential information (e.g. user, hardware)
+    }
+
+    exitcode_t CommandLine::HandleCommandTriggerSteamDownload([[maybe_unused]] CommandLineArgEnumerator* enumerator)
+    {
+        if (!Platform::triggerSteamDownload())
+        {
+            return EXITCODE_FAIL;
+        }
+
+        return EXITCODE_OK;
     }
 } // namespace OpenRCT2

@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -211,7 +211,7 @@ namespace OpenRCT2::Scripting
             auto widget = GetWidget();
             if (widget != nullptr)
             {
-                return widget->width() + 1;
+                return widget->width();
             }
             return 0;
         }
@@ -250,7 +250,7 @@ namespace OpenRCT2::Scripting
             auto widget = GetWidget();
             if (widget != nullptr)
             {
-                return widget->height() + 1;
+                return widget->height();
             }
             return 0;
         }
@@ -371,7 +371,7 @@ namespace OpenRCT2::Scripting
             if (IsCustomWindow())
             {
                 auto widget = GetWidget();
-                if (widget != nullptr && (widget->flags.has(WidgetFlag::textIsString)) && widget->string != nullptr)
+                if (widget != nullptr && widget->flags.has(WidgetFlag::textIsString) && widget->string != nullptr)
                 {
                     return widget->string;
                 }

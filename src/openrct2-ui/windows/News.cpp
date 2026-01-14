@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -128,7 +128,7 @@ namespace OpenRCT2::Ui::Windows
 
             auto& widget = widgets[WIDX_SCROLL];
             ScreenSize scrollSize = onScrollGetSize(0);
-            scrolls[0].contentOffsetY = std::max(0, scrollSize.height - (widget.height() - 1));
+            scrolls[0].contentOffsetY = std::max(0, scrollSize.height - (widget.height() - 2));
             widgetScrollUpdateThumbs(*this, WIDX_SCROLL);
         }
 
@@ -178,7 +178,7 @@ namespace OpenRCT2::Ui::Windows
 
                     groupWidgetsToInsert.emplace_back(groupWidget);
                     lastGroup = def.group;
-                    y += groupWidget.height();
+                    y += groupWidget.height() - 1;
                 }
 
                 // Create checkbox widgets
@@ -260,7 +260,7 @@ namespace OpenRCT2::Ui::Windows
             setWidgetPressed(WIDX_TAB_OPTIONS, page == optionsTab);
         }
 
-        void DrawTabImages(RenderTarget& rt)
+        void DrawTabImages(Drawing::RenderTarget& rt)
         {
             if (!isWidgetDisabled(WIDX_TAB_NEWS))
             {
@@ -308,7 +308,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
             DrawTabImages(rt);
@@ -347,13 +347,8 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onUpdate() override
+        void onUpdateNews()
         {
-            currentFrame++;
-
-            if (page != newsTab)
-                return;
-
             if (_pressedNewsItemIndex == -1 || --_suspendUpdateTicks != 0)
             {
                 return;
@@ -389,6 +384,25 @@ namespace OpenRCT2::Ui::Windows
                 {
                     WindowScrollToLocation(*_mainWindow, subjectLoc.value());
                 }
+            }
+        }
+
+        void onUpdateOptions()
+        {
+            currentFrame++;
+            invalidateWidget(WIDX_TAB_OPTIONS);
+        }
+
+        void onUpdate() override
+        {
+            switch (page)
+            {
+                case newsTab:
+                    onUpdateNews();
+                    break;
+                case optionsTab:
+                    onUpdateOptions();
+                    break;
             }
         }
 
@@ -441,7 +455,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onScrollDraw(int32_t scrollIndex, RenderTarget& rt) override
+        void onScrollDraw(int32_t scrollIndex, Drawing::RenderTarget& rt) override
         {
             int32_t lineHeight = FontGetLineHeight(FontStyle::small);
             int32_t itemHeight = CalculateNewsItemHeight();
@@ -450,7 +464,7 @@ namespace OpenRCT2::Ui::Windows
 
             const auto backgroundPaletteIndex = ColourMapA[colours[3].colour].light;
             // Fill the scrollbar gap if no scrollbar is visible
-            const bool scrollbarVisible = scrolls[0].contentHeight > widgets[WIDX_SCROLL].height();
+            const bool scrollbarVisible = scrolls[0].contentHeight > widgets[WIDX_SCROLL].height() - 1;
             const auto scrollbarFill = scrollbarVisible ? 0 : kScrollBarWidth;
 
             for (const auto& newsItem : getGameState().newsItems.GetArchived())
@@ -512,7 +526,7 @@ namespace OpenRCT2::Ui::Windows
                         case News::ItemType::peepOnRide:
                         {
                             RenderTarget clippedRT;
-                            if (!ClipDrawPixelInfo(clippedRT, rt, screenCoords + ScreenCoordsXY{ 1, 1 }, 22, 22))
+                            if (!ClipRenderTarget(clippedRT, rt, screenCoords + ScreenCoordsXY{ 1, 1 }, 22, 22))
                             {
                                 break;
                             }

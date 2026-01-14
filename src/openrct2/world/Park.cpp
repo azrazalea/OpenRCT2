@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -511,10 +511,9 @@ namespace OpenRCT2::Park
 
     money64 CalculateCompanyValue(const ParkData& park)
     {
-        auto result = park.value - park.bankLoan;
+        money64 result = park.value - park.bankLoan;
 
-        // Clamp addition to prevent overflow
-        result = AddClamp<money64>(result, park.cash);
+        result = AddClamp(result, park.cash);
 
         return result;
     }

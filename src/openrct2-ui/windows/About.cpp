@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -147,7 +147,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
 
@@ -219,7 +219,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        int32_t DrawOpenRCT2Info(RenderTarget& rt)
+        int32_t DrawOpenRCT2Info(Drawing::RenderTarget& rt)
         {
             // Draw logo on placeholder widget
             const auto& logoWidget = widgets[WIDX_OPENRCT2_LOGO];
@@ -234,7 +234,7 @@ namespace OpenRCT2::Ui::Windows
             auto centreX = versionWidget.midX();
             auto centreY = versionWidget.midY() - FontGetLineHeight(FontStyle::medium) / 2;
             auto centrePos = windowPos + ScreenCoordsXY(centreX, centreY);
-            DrawTextWrapped(rt, centrePos, versionWidget.width(), STR_STRING, ft, { colours[1], TextAlignment::centre });
+            DrawTextWrapped(rt, centrePos, versionWidget.width() - 1, STR_STRING, ft, { colours[1], TextAlignment::centre });
 
             // Shows the update available button
             if (OpenRCT2::GetContext()->HasNewVersionInfo())
@@ -252,7 +252,7 @@ namespace OpenRCT2::Ui::Windows
             return textCoords.y - windowPos.y;
         }
 
-        int32_t DrawRCT2Info(RenderTarget& rt)
+        int32_t DrawRCT2Info(Drawing::RenderTarget& rt)
         {
             auto& backgroundWidget = widgets[WIDX_PAGE_BACKGROUND];
             auto textCoords = windowPos + ScreenCoordsXY{ backgroundWidget.midX(), backgroundWidget.top + kPadding };

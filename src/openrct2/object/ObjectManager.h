@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -9,9 +9,13 @@
 
 #pragma once
 
-#include "../object/Object.h"
+#include "../localisation/StringIdType.h"
+#include "../ride/RideTypes.h"
+#include "ObjectSourceGame.h"
+#include "ObjectTypes.h"
 
 #include <memory>
+#include <string_view>
 #include <vector>
 
 namespace OpenRCT2
@@ -19,7 +23,9 @@ namespace OpenRCT2
     struct IObjectRepository;
     class Object;
     class ObjectList;
+    struct ObjectEntryDescriptor;
     struct ObjectRepositoryItem;
+    struct RCTObjectEntry;
 
     struct IObjectManager
     {

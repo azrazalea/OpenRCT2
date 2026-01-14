@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -389,7 +389,7 @@ void UnlinkAllBannersForRide(RideId rideId)
     auto& gameState = getGameState();
     for (auto& banner : gameState.banners)
     {
-        if (!banner.isNull() && (banner.flags.has(BannerFlag::linkedToRide)) && banner.rideIndex == rideId)
+        if (!banner.isNull() && banner.flags.has(BannerFlag::linkedToRide) && banner.rideIndex == rideId)
         {
             banner.flags.unset(BannerFlag::linkedToRide);
             banner.rideIndex = RideId::GetNull();
@@ -442,7 +442,7 @@ Banner* CreateBanner()
         banner->type = 0;
         banner->text = {};
         banner->colour = COLOUR_WHITE;
-        banner->textColour = TextColour::white;
+        banner->textColour = Drawing::TextColour::white;
     }
     return banner;
 }

@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -22,12 +22,16 @@
 #include <list>
 #include <memory>
 
-struct RenderTarget;
 struct TrackDesignFileRef;
 struct ScenarioIndexEntry;
 
 enum class CursorID : uint8_t;
 enum class CloseWindowModifier : uint8_t;
+
+namespace OpenRCT2::Drawing
+{
+    struct RenderTarget;
+}
 
 namespace OpenRCT2
 {
@@ -319,8 +323,8 @@ namespace OpenRCT2
     void WindowCheckAllValidZoom();
     void WindowZoomSet(WindowBase& w, ZoomLevel zoomLevel, bool atCursor);
 
-    void WindowDrawAll(RenderTarget& rt, int32_t left, int32_t top, int32_t right, int32_t bottom);
-    void WindowDraw(RenderTarget& rt, WindowBase& w, int32_t left, int32_t top, int32_t right, int32_t bottom);
+    void WindowDrawAll(Drawing::RenderTarget& rt, int32_t left, int32_t top, int32_t right, int32_t bottom);
+    void WindowDraw(Drawing::RenderTarget& rt, WindowBase& w, int32_t left, int32_t top, int32_t right, int32_t bottom);
 
     bool isToolActive(WindowClass cls);
     bool isToolActive(WindowClass cls, WindowNumber number);

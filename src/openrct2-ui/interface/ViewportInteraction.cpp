@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -467,7 +467,7 @@ namespace OpenRCT2::Ui
                 break;
         }
 
-        if (!gInputFlags.has(InputFlag::unk6) || !gInputFlags.has(InputFlag::toolActive))
+        if (!gInputFlags.has(InputFlag::allowRightMouseRemoval) || !gInputFlags.has(InputFlag::toolActive))
         {
             auto* windowMgr = GetWindowManager();
             if (windowMgr->FindByClass(WindowClass::rideConstruction) == nullptr

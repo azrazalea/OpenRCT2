@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -17,8 +17,8 @@
 #include <openrct2/actions/NetworkModifyGroupAction.h>
 #include <openrct2/config/Config.h>
 #include <openrct2/core/String.hpp>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
-#include <openrct2/drawing/Text.h>
 #include <openrct2/interface/ColourWithFlags.h>
 #include <openrct2/network/Network.h>
 #include <openrct2/ui/WindowManager.h>
@@ -166,8 +166,8 @@ namespace OpenRCT2::Ui::Windows
             auto numItems = Network::GetNumGroups();
 
             WindowDropdownShowTextCustomWidth(
-                windowPos + ScreenCoordsXY{ dropdownWidget->left, dropdownWidget->top }, dropdownWidget->height() + 1,
-                colours[1], 0, 0, numItems, widget->right - dropdownWidget->left);
+                windowPos + ScreenCoordsXY{ dropdownWidget->left, dropdownWidget->top }, dropdownWidget->height(), colours[1],
+                0, 0, numItems, widget->right - dropdownWidget->left);
 
             for (auto i = 0; i < Network::GetNumGroups(); i++)
             {
@@ -183,10 +183,10 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void informationPaint(RenderTarget& rt)
+        void informationPaint(Drawing::RenderTarget& rt)
         {
-            RenderTarget clippedDPI;
-            if (ClipDrawPixelInfo(clippedDPI, rt, windowPos, width, height))
+            RenderTarget clippedRT;
+            if (ClipRenderTarget(clippedRT, rt, windowPos, width, height))
             {
                 auto screenCoords = ScreenCoordsXY{ 3, widgets[WIDX_CONTENT_PANEL].top + 7 };
                 int32_t newWidth = width - 6;
@@ -195,7 +195,7 @@ namespace OpenRCT2::Ui::Windows
                 {
                     auto ft = Formatter();
                     ft.Add<const char*>(name.c_str());
-                    screenCoords.y += DrawTextWrapped(clippedDPI, screenCoords, newWidth, STR_STRING, ft, { colours[1] });
+                    screenCoords.y += DrawTextWrapped(clippedRT, screenCoords, newWidth, STR_STRING, ft, { colours[1] });
                     screenCoords.y += kListRowHeight / 2;
                 }
 
@@ -204,7 +204,7 @@ namespace OpenRCT2::Ui::Windows
                 {
                     auto ft = Formatter();
                     ft.Add<const char*>(description.c_str());
-                    screenCoords.y += DrawTextWrapped(clippedDPI, screenCoords, newWidth, STR_STRING, ft, { colours[1] });
+                    screenCoords.y += DrawTextWrapped(clippedRT, screenCoords, newWidth, STR_STRING, ft, { colours[1] });
                     screenCoords.y += kListRowHeight / 2;
                 }
 
@@ -213,7 +213,7 @@ namespace OpenRCT2::Ui::Windows
                 {
                     auto ft = Formatter();
                     ft.Add<const char*>(providerName.c_str());
-                    DrawTextBasic(clippedDPI, screenCoords, STR_PROVIDER_NAME, ft);
+                    DrawTextBasic(clippedRT, screenCoords, STR_PROVIDER_NAME, ft);
                     screenCoords.y += kListRowHeight;
                 }
 
@@ -222,7 +222,7 @@ namespace OpenRCT2::Ui::Windows
                 {
                     auto ft = Formatter();
                     ft.Add<const char*>(providerEmail.c_str());
-                    DrawTextBasic(clippedDPI, screenCoords, STR_PROVIDER_EMAIL, ft);
+                    DrawTextBasic(clippedRT, screenCoords, STR_PROVIDER_EMAIL, ft);
                     screenCoords.y += kListRowHeight;
                 }
 
@@ -231,12 +231,12 @@ namespace OpenRCT2::Ui::Windows
                 {
                     auto ft = Formatter();
                     ft.Add<const char*>(providerWebsite.c_str());
-                    DrawTextBasic(clippedDPI, screenCoords, STR_PROVIDER_WEBSITE, ft);
+                    DrawTextBasic(clippedRT, screenCoords, STR_PROVIDER_WEBSITE, ft);
                 }
             }
         }
 
-        void playersPaint(RenderTarget& rt)
+        void playersPaint(Drawing::RenderTarget& rt)
         {
             // Number of players
             StringId stringId = numListItems == 1 ? STR_MULTIPLAYER_PLAYER_COUNT : STR_MULTIPLAYER_PLAYER_COUNT_PLURAL;
@@ -246,7 +246,7 @@ namespace OpenRCT2::Ui::Windows
             DrawTextBasic(rt, screenCoords, stringId, ft, { colours[2] });
         }
 
-        void playersScrollPaint(int32_t scrollIndex, RenderTarget& rt) const
+        void playersScrollPaint(int32_t scrollIndex, Drawing::RenderTarget& rt) const
         {
             ScreenCoordsXY screenCoords;
             screenCoords.y = 0;
@@ -346,7 +346,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void groupsPaint(RenderTarget& rt)
+        void groupsPaint(Drawing::RenderTarget& rt)
         {
             thread_local std::string _buffer;
 
@@ -360,7 +360,7 @@ namespace OpenRCT2::Ui::Windows
                 auto ft = Formatter();
                 ft.Add<const char*>(_buffer.c_str());
                 DrawTextEllipsised(
-                    rt, windowPos + ScreenCoordsXY{ widget->midX() - 5, widget->top }, widget->width() - 8, STR_STRING, ft,
+                    rt, windowPos + ScreenCoordsXY{ widget->midX() - 5, widget->top }, widget->width() - 9, STR_STRING, ft,
                     { TextAlignment::centre });
             }
 
@@ -384,12 +384,12 @@ namespace OpenRCT2::Ui::Windows
                 auto ft = Formatter();
                 ft.Add<const char*>(_buffer.c_str());
                 DrawTextEllipsised(
-                    rt, windowPos + ScreenCoordsXY{ widget->midX() - 5, widget->top }, widget->width() - 8, STR_STRING, ft,
+                    rt, windowPos + ScreenCoordsXY{ widget->midX() - 5, widget->top }, widget->width() - 9, STR_STRING, ft,
                     { TextAlignment::centre });
             }
         }
 
-        void groupsScrollPaint(int32_t scrollIndex, RenderTarget& rt) const
+        void groupsScrollPaint(int32_t scrollIndex, Drawing::RenderTarget& rt) const
         {
             auto screenCoords = ScreenCoordsXY{ 0, 0 };
 
@@ -432,7 +432,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void drawTabImage(RenderTarget& rt, int32_t page_number, int32_t spriteIndex)
+        void drawTabImage(Drawing::RenderTarget& rt, int32_t page_number, int32_t spriteIndex)
         {
             WidgetIndex widgetIndex = WIDX_TAB1 + page_number;
 
@@ -454,7 +454,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void drawTabImages(RenderTarget& rt)
+        void drawTabImages(Drawing::RenderTarget& rt)
         {
             drawTabImage(rt, WINDOW_MULTIPLAYER_PAGE_INFORMATION, SPR_TAB_KIOSKS_AND_FACILITIES_0);
             drawTabImage(rt, WINDOW_MULTIPLAYER_PAGE_PLAYERS, SPR_TAB_GUESTS_0);
@@ -704,7 +704,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
             drawTabImages(rt);
@@ -900,7 +900,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onScrollDraw(int32_t scrollIndex, RenderTarget& rt) override
+        void onScrollDraw(int32_t scrollIndex, Drawing::RenderTarget& rt) override
         {
             switch (page)
             {

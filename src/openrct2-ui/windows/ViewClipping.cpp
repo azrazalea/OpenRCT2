@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -181,7 +181,7 @@ namespace OpenRCT2::Ui::Windows
         {
             const auto& widget = widgets[WIDX_CLIP_HEIGHT_SLIDER];
             const ScrollArea* const scroll = &this->scrolls[0];
-            const int16_t scroll_width = widget.width() - 1;
+            const int16_t scroll_width = widget.width() - 2;
             const uint8_t clip_height = static_cast<uint8_t>(
                 (static_cast<float>(scroll->contentOffsetX) / (scroll->contentWidth - scroll_width)) * 255);
             if (clip_height != gClipHeight)
@@ -248,14 +248,12 @@ namespace OpenRCT2::Ui::Windows
             auto mapCoords = ScreenPosToMapPos(screenCoords, &direction);
             if (mapCoords)
             {
-                MapInvalidateSelectionRect();
                 gMapSelectFlags.set(MapSelectFlag::enable);
                 gMapSelectPositionA.x = std::min(_selectionStart.x, mapCoords->x);
                 gMapSelectPositionB.x = std::max(_selectionStart.x, mapCoords->x);
                 gMapSelectPositionA.y = std::min(_selectionStart.y, mapCoords->y);
                 gMapSelectPositionB.y = std::max(_selectionStart.y, mapCoords->y);
                 gMapSelectType = MapSelectType::full;
-                MapInvalidateSelectionRect();
             }
         }
 
@@ -290,7 +288,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             WindowDrawWidgets(*this, rt);
 
@@ -402,7 +400,7 @@ namespace OpenRCT2::Ui::Windows
             const auto& widget = widgets[WIDX_CLIP_HEIGHT_SLIDER];
             const float clip_height_ratio = static_cast<float>(gClipHeight) / 255;
             this->scrolls[0].contentOffsetX = static_cast<int16_t>(
-                std::ceil(clip_height_ratio * (this->scrolls[0].contentWidth - (widget.width() - 1))));
+                std::ceil(clip_height_ratio * (this->scrolls[0].contentWidth - (widget.width() - 2))));
         }
 
         bool IsActive()

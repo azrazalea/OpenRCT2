@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -9,7 +9,6 @@
 
 #pragma once
 
-#include "../Diagnostic.h"
 #include "../core/FixedPoint.hpp"
 #include "../rct12/RCT12.h"
 #include "../ride/Angles.h"
@@ -17,6 +16,7 @@
 #include "../world/ParkData.h"
 #include "Limits.h"
 
+enum class MechanicStatus : uint8_t;
 enum class VehicleColourSettings : uint8_t;
 
 namespace OpenRCT2::Scenario
@@ -363,7 +363,7 @@ namespace OpenRCT2::RCT1
         uint8_t unk134[2];              // 0x134
         uint32_t musicPosition;         // 0x138
         uint8_t breakdownReasonPending; // 0x13C
-        uint8_t mechanicStatus;         // 0x13D
+        MechanicStatus mechanicStatus;  // 0x13D
         uint16_t mechanic;              // 0x13E
         uint8_t inspectionStation;      // 0x140
         uint8_t brokenTrain;            // 0x141

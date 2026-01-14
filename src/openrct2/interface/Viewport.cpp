@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -13,7 +13,6 @@
 #include "../Diagnostic.h"
 #include "../Game.h"
 #include "../GameState.h"
-#include "../Input.h"
 #include "../OpenRCT2.h"
 #include "../config/Config.h"
 #include "../core/Guard.hpp"
@@ -22,9 +21,7 @@
 #include "../drawing/Drawing.h"
 #include "../drawing/IDrawingEngine.h"
 #include "../drawing/Rectangle.h"
-#include "../entity/EntityList.h"
 #include "../entity/Guest.h"
-#include "../entity/PatrolArea.h"
 #include "../entity/Staff.h"
 #include "../interface/Cursors.h"
 #include "../object/LargeSceneryEntry.h"
@@ -39,7 +36,6 @@
 #include "../ui/WindowManager.h"
 #include "../world/Climate.h"
 #include "../world/Map.h"
-#include "../world/MapSelection.h"
 #include "../world/tile_element/LargeSceneryElement.h"
 #include "../world/tile_element/SmallSceneryElement.h"
 #include "../world/tile_element/TileElement.h"
@@ -89,31 +85,6 @@ namespace OpenRCT2
     static void ViewportUpdateSmartFollowStaff(WindowBase* window, const Staff& peep);
     static void ViewportUpdateSmartFollowVehicle(WindowBase* window);
     static void ViewportInvalidate(const Viewport* viewport, const ScreenRect& screenRect);
-
-    /**
-     * This is not a viewport function. It is used to setup many variables for
-     * multiple things.
-     *  rct2: 0x006E6EAC
-     */
-    void ViewportInitAll()
-    {
-        if (!gOpenRCT2NoGraphics)
-        {
-            ColoursInitMaps();
-        }
-
-        WindowInitAll();
-
-        // ?
-        gInputFlags.clearAll();
-        InputSetState(InputState::Reset);
-        gPressedWidget.windowClassification = WindowClass::null;
-        gPickupPeepImage = ImageId();
-        ResetTooltipNotShown();
-        gMapSelectFlags.clearAll();
-        ClearPatrolAreaToRender();
-        TextinputCancel();
-    }
 
     /**
      * Converts between 3d point of a sprite to 2d coordinates for centring on that
@@ -444,7 +415,7 @@ namespace OpenRCT2
         for (; it != gWindowList.end(); it++)
         {
             auto w = it->get();
-            if (!(w->flags.has(WindowFlag::transparent)) || (w->flags.has(WindowFlag::dead)))
+            if (!w->flags.has(WindowFlag::transparent) || w->flags.has(WindowFlag::dead))
                 continue;
             if (w->viewport == window->viewport)
                 continue;
@@ -497,7 +468,7 @@ namespace OpenRCT2
 
         if (DrawingEngineHasDirtyOptimisations())
         {
-            RenderTarget& rt = DrawingEngineGetDpi();
+            RenderTarget& rt = DrawingEngineGetRT();
             ViewportShiftPixels(rt, w, { left, top, right, bottom }, { x_diff, y_diff });
         }
         else
@@ -872,7 +843,7 @@ namespace OpenRCT2
      *  bx: top
      *  dx: right
      *  esi: viewport
-     *  edi: dpi
+     *  edi: rt
      *  ebp: bottom
      */
     void ViewportRender(RenderTarget& rt, const Viewport* viewport)
@@ -909,12 +880,12 @@ namespace OpenRCT2
                    | VIEWPORT_FLAG_CLIP_VIEW)
             && (~session.ViewFlags & VIEWPORT_FLAG_TRANSPARENT_BACKGROUND))
         {
-            uint8_t colour = COLOUR_AQUAMARINE;
+            PaletteIndex colour = PaletteIndex::pi10;
             if (session.ViewFlags & VIEWPORT_FLAG_HIDE_ENTITIES)
             {
-                colour = COLOUR_BLACK;
+                colour = PaletteIndex::pi0;
             }
-            GfxClear(session.DPI, colour);
+            GfxClear(session.rt, colour);
         }
 
         PaintDrawStructs(session);
@@ -922,12 +893,12 @@ namespace OpenRCT2
         if (Config::Get().general.renderWeatherGloom && !gTrackDesignSaveMode
             && !(session.ViewFlags & VIEWPORT_FLAG_HIDE_ENTITIES) && !(session.ViewFlags & VIEWPORT_FLAG_HIGHLIGHT_PATH_ISSUES))
         {
-            ViewportPaintWeatherGloom(session.DPI);
+            ViewportPaintWeatherGloom(session.rt);
         }
 
         if (session.PSStringHead != nullptr)
         {
-            PaintDrawMoneyStructs(session.DPI, session.PSStringHead);
+            PaintDrawMoneyStructs(session.rt, session.PSStringHead);
         }
     }
 
@@ -938,7 +909,7 @@ namespace OpenRCT2
      *  ebx: top
      *  edx: right
      *  esi: viewport
-     *  edi: dpi
+     *  edi: rt
      *  ebp: bottom
      */
     static void ViewportPaint(const Viewport* viewport, RenderTarget& rt)
@@ -990,7 +961,7 @@ namespace OpenRCT2
             PaintSession* session = PaintSessionAlloc(worldRT, viewport->flags, viewport->rotation);
             _paintColumns.push_back(session);
 
-            RenderTarget& columnRT = session->DPI;
+            RenderTarget& columnRT = session->rt;
             if (x >= columnRT.x)
             {
                 const int32_t leftPitch = x - columnRT.x;
@@ -1554,14 +1525,14 @@ namespace OpenRCT2
         uint8_t* index = g1->offset + (y * g1->width) + x;
 
         // Needs investigation as it has no consideration for pure BMP maps.
-        if (!(g1->flags & G1_FLAG_HAS_TRANSPARENCY))
+        if (!g1->flags.has(G1Flag::hasTransparency))
         {
             return false;
         }
 
         if (imageType & IMAGE_TYPE_REMAP)
         {
-            return paletteMap[*index] != 0;
+            return paletteMap[*index] != PaletteIndex::pi0;
         }
 
         if (imageType & IMAGE_TYPE_TRANSPARENT)
@@ -1616,16 +1587,16 @@ namespace OpenRCT2
 
         if (rt.zoom_level > ZoomLevel{ 0 })
         {
-            if (g1->flags & G1_FLAG_NO_ZOOM_DRAW)
+            if (g1->flags.has(G1Flag::noZoomDraw))
             {
                 return false;
             }
 
-            while (g1->flags & G1_FLAG_HAS_ZOOM_SPRITE && zoomLevel > ZoomLevel{ 0 })
+            while (g1->flags.has(G1Flag::hasZoomSprite) && zoomLevel > ZoomLevel{ 0 })
             {
-                imageId = imageId.WithIndex(imageId.GetIndex() - g1->zoomed_offset);
+                imageId = imageId.WithIndex(imageId.GetIndex() - g1->zoomedOffset);
                 g1 = GfxGetG1Element(imageId);
-                if (g1 == nullptr || g1->flags & G1_FLAG_NO_ZOOM_DRAW)
+                if (g1 == nullptr || g1->flags.has(G1Flag::noZoomDraw))
                 {
                     return false;
                 }
@@ -1637,8 +1608,8 @@ namespace OpenRCT2
             }
         }
 
-        origin.x += g1->x_offset;
-        origin.y += g1->y_offset;
+        origin.x += g1->xOffset;
+        origin.y += g1->yOffset;
         interactionPoint -= origin;
 
         if (interactionPoint.x < 0 || interactionPoint.y < 0 || interactionPoint.x >= g1->width
@@ -1647,12 +1618,12 @@ namespace OpenRCT2
             return false;
         }
 
-        if (g1->flags & G1_FLAG_RLE_COMPRESSION)
+        if (g1->flags.has(G1Flag::hasRLECompression))
         {
             return IsPixelPresentRLE(g1->offset, interactionPoint.x, interactionPoint.y);
         }
 
-        if (!(g1->flags & G1_FLAG_1))
+        if (!g1->flags.has(G1Flag::one))
         {
             return IsPixelPresentBMP(imageType, g1, interactionPoint.x, interactionPoint.y, paletteMap);
         }
@@ -1684,7 +1655,7 @@ namespace OpenRCT2
             {
                 paletteIndex = imageId.GetRemap();
             }
-            if (auto pm = GetPaletteMapForColour(paletteIndex); pm.has_value())
+            if (auto pm = GetPaletteMapForColour(static_cast<FilterPaletteID>(paletteIndex)); pm.has_value())
             {
                 paletteMap = pm.value();
             }
@@ -1719,7 +1690,7 @@ namespace OpenRCT2
             while (next_ps != nullptr)
             {
                 ps = next_ps;
-                if (IsSpriteInteractedWith(session->DPI, ps->image_id, ps->ScreenPos))
+                if (IsSpriteInteractedWith(session->rt, ps->image_id, ps->ScreenPos))
                 {
                     if (PSInteractionTypeIsInFilter(ps, filter)
                         && GetPaintStructVisibility(ps, viewFlags) == VisibilityKind::visible)
@@ -1734,7 +1705,7 @@ namespace OpenRCT2
 #pragma GCC diagnostic ignored "-Wnull-dereference"
             for (AttachedPaintStruct* attached_ps = ps->Attached; attached_ps != nullptr; attached_ps = attached_ps->NextEntry)
             {
-                if (IsSpriteInteractedWith(session->DPI, attached_ps->image_id, ps->ScreenPos + attached_ps->RelativePos))
+                if (IsSpriteInteractedWith(session->rt, attached_ps->image_id, ps->ScreenPos + attached_ps->RelativePos))
                 {
                     if (PSInteractionTypeIsInFilter(ps, filter)
                         && GetPaintStructVisibility(ps, viewFlags) == VisibilityKind::visible)
@@ -1780,8 +1751,7 @@ namespace OpenRCT2
         Viewport* viewport = window->viewport;
         auto viewLoc = screenCoords;
         viewLoc -= viewport->pos;
-        if (viewLoc.x >= 0 && viewLoc.x < static_cast<int32_t>(viewport->width) && viewLoc.y >= 0
-            && viewLoc.y < static_cast<int32_t>(viewport->height))
+        if ((viewLoc.x >= 0) && (viewLoc.x < viewport->width) && (viewLoc.y >= 0) && (viewLoc.y < viewport->height))
         {
             viewLoc.x = viewport->zoom.ApplyTo(viewLoc.x);
             viewLoc.y = viewport->zoom.ApplyTo(viewLoc.y);
@@ -2058,8 +2028,3 @@ namespace OpenRCT2
         return viewports;
     }
 } // namespace OpenRCT2
-
-ZoomLevel ZoomLevel::min()
-{
-    return ZoomLevel{ -2 };
-}

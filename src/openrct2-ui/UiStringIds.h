@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -1574,15 +1574,7 @@ namespace OpenRCT2
         STR_RIDE_MODE_NUMBER_OF_SWINGS_VALUE = 1771,
         STR_RIDE_MODE_SPEED_VALUE = 1331,
         STR_RIDE_MODE_TIME_LIMIT_VALUE = 1749,
-        STR_RIDE_NAME_1D = 31,
-        STR_RIDE_NAME_1F = 33,
-        STR_RIDE_NAME_22 = 36,
-        STR_RIDE_NAME_50 = 82,
-        STR_RIDE_NAME_52 = 84,
-        STR_RIDE_NAME_53 = 85,
-        STR_RIDE_NAME_54 = 86,
-        STR_RIDE_NAME_55 = 87,
-        STR_RIDE_NAME_59 = 91,
+        STR_RIDE_NAME_UNKNOWN_INT32 = 7008,
         STR_RIDE_SECONDARY_PRICE_VALUE = 1799,
         STR_RIDE_STATS_ALTITUDE = 1416,
         STR_RIDE_STATS_ALTITUDE_FORMAT = 1420,

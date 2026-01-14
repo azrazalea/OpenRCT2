@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
@@ -59,7 +60,7 @@ namespace OpenRCT2
         virtual bool StopRecording(bool discard = false) = 0;
         virtual bool GetCurrentReplayInfo(ReplayRecordInfo& info) const = 0;
 
-        virtual bool StartPlayback(const std::string& file) = 0;
+        virtual void StartPlayback(const std::string& file) = 0;
         virtual bool IsPlaybackStateMismatching() const = 0;
         virtual bool StopPlayback() = 0;
 

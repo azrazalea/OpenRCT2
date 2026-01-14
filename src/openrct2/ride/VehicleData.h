@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -25,3 +25,8 @@ extern const TopSpinTimeToSpriteMap* kTopSpinTimeToSpriteMaps[];
 
 extern const uint8_t MotionSimulatorTimeToSpriteMap[];
 extern const int32_t MotionSimulatorTimeToSpriteMapCount;
+
+extern const uint8_t kSpaceRingsTimeToSpriteMap[];
+
+/** rct2: 0x0099F9D0 */
+extern const int8_t* kSwingingTimeToSpriteMaps[];

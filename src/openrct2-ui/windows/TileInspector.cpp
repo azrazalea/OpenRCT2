@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -21,6 +21,7 @@
 #include <openrct2/SpriteIds.h>
 #include <openrct2/actions/TileModifyAction.h>
 #include <openrct2/core/Guard.hpp>
+#include <openrct2/drawing/Drawing.h>
 #include <openrct2/drawing/Rectangle.h>
 #include <openrct2/localisation/Formatter.h>
 #include <openrct2/object/FootpathObject.h>
@@ -904,8 +905,8 @@ static uint64_t PageDisabledWidgets[] = {
                             gDropdown.items[1] = Dropdown::MenuLabel(STR_TILE_INSPECTOR_WALL_SLOPED_LEFT);
                             gDropdown.items[2] = Dropdown::MenuLabel(STR_TILE_INSPECTOR_WALL_SLOPED_RIGHT);
                             WindowDropdownShowTextCustomWidth(
-                                { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height() + 1, colours[1], 0,
-                                Dropdown::Flag::StayOpen, 3, widget->width() - 3);
+                                { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height(), colours[1], 0,
+                                Dropdown::Flag::StayOpen, 3, widget->width() - 4);
 
                             // Set current value as checked
                             gDropdown.items[tileElement->AsWall()->GetSlope()].setChecked(true);
@@ -969,7 +970,6 @@ static uint64_t PageDisabledWidgets[] = {
 
         void onToolUpdate(WidgetIndex widgetIndex, const ScreenCoordsXY& screenCoords) override
         {
-            MapInvalidateSelectionRect();
             gMapSelectFlags.set(MapSelectFlag::enable);
 
             CoordsXY mapCoords;
@@ -999,7 +999,6 @@ static uint64_t PageDisabledWidgets[] = {
                 gMapSelectFlags.unset(MapSelectFlag::enable);
 
             gMapSelectType = MapSelectType::full;
-            MapInvalidateSelectionRect();
         }
 
         void onToolDown(WidgetIndex widgetIndex, const ScreenCoordsXY& screenCoords) override
@@ -1046,7 +1045,7 @@ static uint64_t PageDisabledWidgets[] = {
             invalidateWidget(WIDX_LIST);
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             drawWidgets(rt);
             ScreenCoordsXY screenCoords(windowPos.x, windowPos.y);
@@ -1584,9 +1583,9 @@ static uint64_t PageDisabledWidgets[] = {
             }
         }
 
-        void onScrollDraw(int32_t scrollIndex, RenderTarget& rt) override
+        void onScrollDraw(int32_t scrollIndex, Drawing::RenderTarget& rt) override
         {
-            const int32_t listWidth = widgets[WIDX_LIST].width();
+            const int32_t listWidth = widgets[WIDX_LIST].width() - 1;
             Rectangle::fill(
                 rt, { { rt.x, rt.y }, { rt.x + rt.width - 1, rt.y + rt.height - 1 } }, ColourMapA[colours[1].colour].mid_light);
 
@@ -1595,7 +1594,7 @@ static uint64_t PageDisabledWidgets[] = {
             {
                 auto& listWidget = widgets[WIDX_LIST];
                 auto centrePos = ScreenCoordsXY{ listWidget.width() / 2,
-                                                 (listWidget.height() - FontGetLineHeight(FontStyle::medium)) / 2 };
+                                                 (listWidget.height() - 1 - FontGetLineHeight(FontStyle::medium)) / 2 };
                 auto ft = Formatter{};
                 auto textPaint = TextPaint{ colours[1], TextAlignment::centre };
                 DrawTextWrapped(rt, centrePos, listWidth, STR_TILE_INSPECTOR_SELECT_TILE_HINT, ft, textPaint);
@@ -1624,10 +1623,10 @@ static uint64_t PageDisabledWidgets[] = {
                 if (selectedRow)
                     Rectangle::fill(rt, fillRectangle, ColourMapA[colours[1].colour].mid_dark);
                 else if (hoveredRow)
-                    Rectangle::fill(rt, fillRectangle, ColourMapA[colours[1].colour].mid_dark | 0x1000000);
+                    Rectangle::fill(rt, fillRectangle, ColourMapA[colours[1].colour].mid_dark, true);
                 // Zebra stripes
                 else if (((windowTileInspectorElementCount - i) & 1) == 0)
-                    Rectangle::fill(rt, fillRectangle, ColourMapA[colours[1].colour].light | 0x1000000);
+                    Rectangle::fill(rt, fillRectangle, ColourMapA[colours[1].colour].light, true);
 
                 StringId stringFormat = STR_WINDOW_COLOUR_2_STRINGID;
                 if (selectedRow || hoveredRow)

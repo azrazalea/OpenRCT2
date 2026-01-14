@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -71,7 +71,7 @@ namespace OpenRCT2::CommandLine::Sprite
                 }
 
                 path = fs::u8path(path).generic_u8string();
-                fprintf(stdout, "{ \"path\": \"%s\", \"x\": %d, \"y\": %d }", path.c_str(), g1.x_offset, g1.y_offset);
+                fprintf(stdout, "{ \"path\": \"%s\", \"x\": %d, \"y\": %d }", path.c_str(), g1.xOffset, g1.yOffset);
             }
 
             fprintf(stdout, (spriteIndex + 1 != maxIndex) ? ",\n" : "\n");

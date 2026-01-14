@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -13,6 +13,7 @@
 
     #include "../../../Context.h"
     #include "../../../core/Guard.hpp"
+    #include "../../../drawing/ScrollingText.h"
     #include "../../../entity/EntityRegistry.h"
     #include "../../../object/LargeSceneryEntry.h"
     #include "../../../object/WallSceneryEntry.h"
@@ -1462,7 +1463,7 @@ namespace OpenRCT2::Scripting
             case TileElementType::Banner:
             {
                 auto* el = _element->AsBanner();
-                el->GetBanner()->textColour = static_cast<TextColour>(value);
+                el->GetBanner()->textColour = static_cast<Drawing::TextColour>(value);
                 Invalidate();
                 break;
             }
@@ -2245,7 +2246,7 @@ namespace OpenRCT2::Scripting
         {
             banner->text = {};
             banner->colour = 0;
-            banner->textColour = TextColour::black;
+            banner->textColour = Drawing::TextColour::black;
             banner->flags = {};
             if (_element->GetType() == TileElementType::Wall)
                 banner->flags.set(BannerFlag::isWall);

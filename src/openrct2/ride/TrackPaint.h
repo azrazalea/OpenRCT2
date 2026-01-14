@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -499,6 +499,7 @@ void TrackPaintUtilLeftQuarterTurn1TilePaint(
     const ImageId colourFlags, const uint32_t* sprites);
 void TrackPaintUtilSpinningTunnelPaint(PaintSession& session, int8_t thickness, int16_t height, Direction direction);
 
+void TrackPaintUtilOnridePhotoPlatformPaintBase(PaintSession& session, int32_t height);
 /**
  * Renders the black metal platform and the supports of the on-ride photo section.
  *

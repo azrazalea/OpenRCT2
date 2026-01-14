@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -519,8 +519,8 @@ namespace OpenRCT2::Ui::Windows
                 if (widget.type == WidgetType::scroll)
                 {
                     auto& listView = _info.ListViews[scrollIndex];
-                    auto wwidth = widget.width() + 1 - 2;
-                    auto wheight = widget.height() + 1 - 2;
+                    auto wwidth = widget.width() - 2;
+                    auto wheight = widget.height() - 2;
                     if (listView.GetScrollbars() == ScrollbarType::Horizontal
                         || listView.GetScrollbars() == ScrollbarType::Both)
                     {
@@ -536,7 +536,7 @@ namespace OpenRCT2::Ui::Windows
             }
         }
 
-        void onDraw(RenderTarget& rt) override
+        void onDraw(Drawing::RenderTarget& rt) override
         {
             WindowDrawWidgets(*this, rt);
             DrawTabImages(rt);
@@ -559,14 +559,14 @@ namespace OpenRCT2::Ui::Windows
                 auto& onDraw = widgetDesc->OnDraw;
                 if (onDraw.is_function())
                 {
-                    RenderTarget widgetDpi;
-                    if (ClipDrawPixelInfo(
-                            widgetDpi, rt, { windowPos.x + widget.left, windowPos.y + widget.top }, widget.width(),
-                            widget.height()))
+                    RenderTarget widgetRT;
+                    if (ClipRenderTarget(
+                            widgetRT, rt, { windowPos.x + widget.left, windowPos.y + widget.top }, widget.width() - 1,
+                            widget.height() - 1))
                     {
                         auto ctx = onDraw.context();
                         auto dukWidget = ScWidget::ToDukValue(ctx, this, widgetIndex);
-                        auto dukG = GetObjectAsDukValue(ctx, std::make_shared<ScGraphicsContext>(ctx, widgetDpi));
+                        auto dukG = GetObjectAsDukValue(ctx, std::make_shared<ScGraphicsContext>(ctx, widgetRT));
                         auto& scriptEngine = GetContext()->GetScriptEngine();
                         scriptEngine.ExecutePluginCall(_info.Owner, widgetDesc->OnDraw, dukWidget, { dukG }, false);
                     }
@@ -653,8 +653,8 @@ namespace OpenRCT2::Ui::Windows
                         gDropdown.items[i] = Dropdown::MenuLabel(items[i].c_str());
                     }
                     WindowDropdownShowTextCustomWidth(
-                        { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height() + 1,
-                        colours[widget->colour], 0, Dropdown::Flag::StayOpen, numItems, widget->width() - 3);
+                        { windowPos.x + widget->left, windowPos.y + widget->top }, widget->height(), colours[widget->colour], 0,
+                        Dropdown::Flag::StayOpen, numItems, widget->width() - 4);
 
                     if (selectedIndex >= 0 && selectedIndex < static_cast<int32_t>(numItems))
                         gDropdown.items[selectedIndex].setChecked(true);
@@ -809,8 +809,8 @@ namespace OpenRCT2::Ui::Windows
                 {
                     auto left = windowPos.x + viewportWidget->left + 1;
                     auto top = windowPos.y + viewportWidget->top + 1;
-                    auto wwidth = viewportWidget->width() - 1;
-                    auto wheight = viewportWidget->height() - 1;
+                    auto wwidth = viewportWidget->width() - 2;
+                    auto wheight = viewportWidget->height() - 2;
                     if (viewport == nullptr)
                     {
                         ViewportCreate(*this, { left, top }, wwidth, wheight, Focus(CoordsXYZ(0, 0, 0)));

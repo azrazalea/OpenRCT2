@@ -1,5 +1,5 @@
 /*****************************************************************************
- * Copyright (c) 2014-2025 OpenRCT2 developers
+ * Copyright (c) 2014-2026 OpenRCT2 developers
  *
  * For a complete list of all authors, please refer to contributors.md
  * Interested in contributing? Visit https://github.com/OpenRCT2/OpenRCT2
@@ -18,9 +18,9 @@
 #include "../../audio/Audio.h"
 #include "../../config/Config.h"
 #include "../../core/Console.hpp"
+#include "../../drawing/Drawing.h"
 #include "../../drawing/Text.h"
 #include "../../interface/Screenshot.h"
-#include "../../interface/Viewport.h"
 #include "../../network/Network.h"
 #include "../../network/NetworkBase.h"
 #include "../../scenario/ScenarioRepository.h"
@@ -107,7 +107,7 @@ void TitleScene::Load()
     GetContext().GetNetwork().Close();
 #endif
     gameStateInitAll(getGameState(), kDefaultMapSize);
-    ViewportInitAll();
+    ContextResetSubsystems();
     ContextOpenWindow(WindowClass::mainWindow);
 
     TitleInitialise();
@@ -141,7 +141,7 @@ void TitleScene::Tick()
     ScreenshotCheck();
     TitleHandleKeyboardInput();
 
-    if (GameIsNotPaused())
+    if (!gOpenRCT2Headless && GameIsNotPaused())
     {
         TryLoadSequence();
         _sequencePlayer->Update();
@@ -205,6 +205,10 @@ void TitleScene::CreateWindows()
 
 void TitleScene::TitleInitialise()
 {
+    if (gOpenRCT2Headless)
+    {
+        return;
+    }
     if (_sequencePlayer == nullptr)
     {
         _sequencePlayer = GetContext().GetUiContext().GetTitleSequencePlayer();
@@ -285,7 +289,7 @@ void TitleScene::TitleInitialise()
 
 bool TitleScene::TryLoadSequence(bool loadPreview)
 {
-    if (_loadedTitleSequenceId != _currentSequence || loadPreview)
+    if (!gOpenRCT2Headless && (_loadedTitleSequenceId != _currentSequence || loadPreview))
     {
         if (_sequencePlayer == nullptr)
         {
