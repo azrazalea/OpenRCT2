@@ -25,10 +25,16 @@ void AppendShopCommands(std::vector<CommandSpec>& specs)
         "shops",
         { "catalog" },
         "List available shop/stall blueprints.",
-        "Shows every loaded shop/stall object identifier, ride type, stocked items, and build cost. Once placed, use 'rides get' to inspect shop status and pricing.",
-        {},
-        [](const ParsedArgs&) {
-            return CommandPlan{ "shops.catalog", json::object() };
+        "Enumerates invented shop/stall objects (or every loaded entry with --all) with ride type, stocked items, and build cost. Once placed, use 'rides get' to inspect shop status and pricing.",
+        { CommandArgSpec{ "all", "Include locked/uninvented entries as well.", false, "BOOL" },
+          CommandArgSpec{ "include-locked", "Alias for --all.", false, "BOOL" } },
+        [](const ParsedArgs& args) {
+            json params = json::object();
+            if (auto includeLocked = cli::GetBoolOption(args, { "all", "include-locked" }))
+            {
+                params["includeLocked"] = *includeLocked;
+            }
+            return CommandPlan{ "shops.catalog", params };
         },
         renderers::RenderShopCatalog });
 
