@@ -397,17 +397,35 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             return true;
         }
 
-        json_t BuildResearchStatusPayload(const ResearchStatusQuery& query)
+        json_t BuildResearchStatusPayload(const ResearchStatusQuery& /*query*/)
         {
             const auto& gameState = getGameState();
             json_t payload = json_t::object();
             payload["fundingLevel"] = ResearchFundingLevelToString(gameState.researchFundingLevel);
             payload["fundingIndex"] = gameState.researchFundingLevel;
-            payload["progress"] = gameState.researchProgress;
-            payload["progressStage"] = gameState.researchProgressStage;
-            payload["progressPercent"] = CalculateResearchProgressPercent(gameState.researchProgress, gameState.researchProgressStage);
-            payload["expectedMonth"] = gameState.researchExpectedMonth;
-            payload["expectedDay"] = gameState.researchExpectedDay;
+
+            // Progress stage info - but not raw progress value (that's internal)
+            const auto stage = gameState.researchProgressStage;
+            std::string stageLabel;
+            switch (stage)
+            {
+                case RESEARCH_STAGE_INITIAL_RESEARCH:
+                    stageLabel = "initialResearch";
+                    break;
+                case RESEARCH_STAGE_DESIGNING:
+                    stageLabel = "designing";
+                    break;
+                case RESEARCH_STAGE_COMPLETING_DESIGN:
+                    stageLabel = "completingDesign";
+                    break;
+                case RESEARCH_STAGE_FINISHED_ALL:
+                    stageLabel = "allComplete";
+                    break;
+                default:
+                    stageLabel = "unknown";
+                    break;
+            }
+            payload["progressStage"] = stageLabel;
 
             json_t priorities = json_t::object();
             auto addPriority = [&](ResearchCategory category, std::string_view name) {
@@ -423,90 +441,58 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             addPriority(ResearchCategory::sceneryGroup, "scenery");
             payload["priorities"] = priorities;
 
-            if (gameState.researchNextItem)
+            // Current research - visibility depends on stage (like the in-game UI)
+            // RESEARCH_STAGE_INITIAL_RESEARCH: Nothing visible ("Unknown")
+            // RESEARCH_STAGE_DESIGNING: Category only visible
+            // RESEARCH_STAGE_COMPLETING_DESIGN: Full item name visible
+            if (gameState.researchNextItem && stage != RESEARCH_STAGE_FINISHED_ALL)
             {
-                payload["next"] = BuildResearchItemPayload(gameState.researchNextItem.value());
+                json_t next = json_t::object();
+                const auto& item = gameState.researchNextItem.value();
+
+                if (stage == RESEARCH_STAGE_INITIAL_RESEARCH)
+                {
+                    // Player sees "Unknown" - we show nothing specific
+                    next["status"] = "unknown";
+                }
+                else if (stage == RESEARCH_STAGE_DESIGNING)
+                {
+                    // Player sees category only (e.g., "Roller Coaster")
+                    next["status"] = "designing";
+                    next["category"] = ResolveStringId(item.GetCategoryName());
+                    next["categoryKey"] = ResearchCategoryToKey(item.category);
+                }
+                else if (stage == RESEARCH_STAGE_COMPLETING_DESIGN)
+                {
+                    // Player sees full item name
+                    next["status"] = "completingDesign";
+                    next["category"] = ResolveStringId(item.GetCategoryName());
+                    next["categoryKey"] = ResearchCategoryToKey(item.category);
+                    next["name"] = ResolveStringId(item.GetName());
+                    next["type"] = item.type == OpenRCT2::Research::EntryType::ride ? "ride" : "scenery";
+                }
+                payload["next"] = next;
+
+                // Expected completion date - only visible after initial research
+                if (stage != RESEARCH_STAGE_INITIAL_RESEARCH && gameState.researchExpectedDay != 255)
+                {
+                    payload["expectedMonth"] = gameState.researchExpectedMonth;
+                    payload["expectedDay"] = gameState.researchExpectedDay;
+                }
             }
+
+            // Last completed research - player can always see this
             if (gameState.researchLastItem)
             {
                 payload["last"] = BuildResearchItemPayload(gameState.researchLastItem.value());
             }
 
-            std::vector<json_t> queueEntries;
-            size_t scenarioIndex = 0;
-            for (const auto& item : gameState.researchItemsUninvented)
-            {
-                if (!query.categories.empty())
-                {
-                    bool match = false;
-                    for (auto category : query.categories)
-                    {
-                        if (category == item.category)
-                        {
-                            match = true;
-                            break;
-                        }
-                    }
-                    if (!match)
-                    {
-                        continue;
-                    }
-                }
-                json_t entry = BuildResearchItemPayload(item);
-                entry["queueIndex"] = scenarioIndex++;
-                queueEntries.push_back(entry);
-            }
+            // NOTE: We intentionally do NOT expose the research queue.
+            // Players cannot see what will be researched next or in what order.
+            // This would give an unfair advantage.
 
-            if (query.queueOrder != ResearchQueueOrder::Scenario)
-            {
-                std::sort(queueEntries.begin(), queueEntries.end(), [&](const json_t& lhs, const json_t& rhs) {
-                    switch (query.queueOrder)
-                    {
-                        case ResearchQueueOrder::Name:
-                        {
-                            int cmp = CompareCaseInsensitive(lhs.value("name", std::string("")), rhs.value("name", std::string("")));
-                            if (cmp != 0)
-                            {
-                                return query.descending ? cmp > 0 : cmp < 0;
-                            }
-                            break;
-                        }
-                        case ResearchQueueOrder::Category:
-                        {
-                            int cmp = CompareCaseInsensitive(lhs.value("categoryKey", std::string("")), rhs.value("categoryKey", std::string("")));
-                            if (cmp != 0)
-                            {
-                                return query.descending ? cmp > 0 : cmp < 0;
-                            }
-                            break;
-                        }
-                        case ResearchQueueOrder::Scenario:
-                            break;
-                    }
-                    auto leftIndex = lhs.value("queueIndex", 0);
-                    auto rightIndex = rhs.value("queueIndex", 0);
-                    return leftIndex < rightIndex;
-                });
-            }
-
-            json_t queue = json_t::array();
-            size_t emitted = 0;
-            for (const auto& entry : queueEntries)
-            {
-                queue.push_back(entry);
-                emitted++;
-                if (query.limitEnabled && emitted >= query.queueLimit)
-                {
-                    break;
-                }
-            }
-            payload["queue"] = queue;
-            payload["queueCount"] = queueEntries.size();
-            if (query.limitEnabled)
-            {
-                payload["queueLimit"] = query.queueLimit;
-            }
-            payload["allComplete"] = gameState.researchProgressStage == RESEARCH_STAGE_FINISHED_ALL;
+            payload["allComplete"] = stage == RESEARCH_STAGE_FINISHED_ALL;
+            payload["uninventedCount"] = static_cast<int64_t>(gameState.researchItemsUninvented.size());
             return payload;
         }
 
