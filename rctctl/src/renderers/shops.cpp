@@ -99,7 +99,7 @@ void RenderShopCatalog(const json& result)
     canvas.KeyValue("Entries", static_cast<int>(entries.size()));
 
     TableView table;
-    table.headers = { "Name", "Type", "Items", "Build", "Use with" };
+    table.headers = { "Name", "Type", "Status", "Items", "Build", "Use with" };
     for (const auto& entry : entries)
     {
         auto name = entry.value("name", entry.value("identifier", std::string()));
@@ -107,6 +107,7 @@ void RenderShopCatalog(const json& result)
         auto classification = entry.value("classification", std::string());
         auto buildCost = entry.value("buildCost", 0.0);
         auto labels = ExtractItemLabels(entry.value("items", json::array()));
+        std::string status = entry.value("invented", false) ? "Available" : "Locked";
 
         std::string typeLabel = rideType;
         if (!classification.empty())
@@ -118,7 +119,7 @@ void RenderShopCatalog(const json& result)
             typeLabel += classification;
         }
 
-        table.rows.push_back({ name, typeLabel, JoinItemList(labels), util::FormatCurrency(buildCost),
+        table.rows.push_back({ name, typeLabel, status, JoinItemList(labels), util::FormatCurrency(buildCost),
             BuildSelectorLabel(entry) });
     }
     canvas.Table(table);

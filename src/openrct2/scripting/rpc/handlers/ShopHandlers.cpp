@@ -26,6 +26,7 @@
 #include "../../../core/Numerics.hpp"
 #include "../../../interface/WindowBase.h"
 #include "../../../localisation/Formatter.h"
+#include "../../../management/Research.h"
 #include "../../../localisation/Formatting.h"
 #include "../../../localisation/StringIds.h"
 #include "../../../object/ObjectList.h"
@@ -495,11 +496,12 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             return items;
         }
 
-        json_t BuildShopCatalogPayload(OpenRCT2::IContext& context)
+        json_t BuildShopCatalogPayload(OpenRCT2::IContext& context, bool includeLocked = false)
         {
             auto& manager = context.GetObjectManager();
             auto maxEntries = static_cast<ObjectEntryIndex>(getObjectEntryGroupCount(ObjectType::ride));
             json_t entries = json_t::array();
+            size_t loadedEntries = 0;
             for (ObjectEntryIndex i = 0; i < maxEntries; ++i)
             {
                 auto* rideObject = manager.GetLoadedObject<RideObject>(i);
@@ -510,6 +512,14 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
                 auto shopInfo = BuildShopInfoFromRideObject(*rideObject, i);
                 if (!shopInfo)
+                {
+                    continue;
+                }
+                loadedEntries++;
+
+                // Research/availability status
+                const bool invented = ResearchIsInvented(ObjectType::ride, i) || RideEntryIsInvented(i);
+                if (!includeLocked && !invented)
                 {
                     continue;
                 }
@@ -531,6 +541,10 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 node["classification"]
                     = std::string(RideClassificationToString(shopInfo->descriptor->Classification));
                 node["category"] = std::string(RideCategoryToString(shopInfo->descriptor->Category));
+
+                node["invented"] = invented;
+                node["available"] = invented; // Alias for clarity
+
                 node["startPiece"] = static_cast<int32_t>(shopInfo->descriptor->StartTrackPiece);
                 node["defaultPrices"]
                     = json_t::array({ MoneyToDouble(shopInfo->descriptor->DefaultPrices[0]),
@@ -544,6 +558,8 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             json_t payload = json_t::object();
             payload["entries"] = entries;
             payload["count"] = entries.size();
+            payload["includeLocked"] = includeLocked;
+            payload["loadedEntries"] = loadedEntries;
             return payload;
         }
 
@@ -957,16 +973,18 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
         }
 
         // Handler implementations
-        RpcResult HandleShopsCatalog(const json_t& /*params*/)
+        RpcResult HandleShopsCatalog(const json_t& params)
         {
             auto* context = GetContext();
             if (context == nullptr)
             {
                 return RpcResult::Error(-32603, "Game context is not available");
             }
-            auto payload = BuildShopCatalogPayload(*context);
+            const bool includeLocked = params.is_object() ? GetBoolParam(params, "includeLocked").value_or(false) : false;
+            auto payload = BuildShopCatalogPayload(*context, includeLocked);
+            std::string contextLabel = includeLocked ? "Browsed all shop blueprints" : "Browsed invented shop blueprints";
             auto hint = MakeConstructRideHint(
-                "shops.catalog", "Browsed shop catalog", Telemetry::AIAgentConstructRideTab::Shop);
+                "shops.catalog", std::move(contextLabel), Telemetry::AIAgentConstructRideTab::Shop);
             return RpcResult::Ok(payload, std::move(hint));
         }
 
