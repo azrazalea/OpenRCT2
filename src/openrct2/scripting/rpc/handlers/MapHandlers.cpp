@@ -2076,10 +2076,11 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             else
             {
                 // Find any path element at this XY coordinate
-                for (auto* element : TileElementsView<PathElement>(coords))
+                auto pathView = TileElementsView<PathElement>(coords);
+                auto pathIt = pathView.begin();
+                if (pathIt != pathView.end())
                 {
-                    pathElement = element;
-                    break;
+                    pathElement = *pathIt;
                 }
                 if (pathElement == nullptr)
                 {
@@ -2149,10 +2150,11 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             else
             {
                 // Find any path element at this XY coordinate
-                for (auto* element : TileElementsView<PathElement>(coords))
+                auto pathView = TileElementsView<PathElement>(coords);
+                auto pathIt = pathView.begin();
+                if (pathIt != pathView.end())
                 {
-                    pathElement = element;
-                    break;
+                    pathElement = *pathIt;
                 }
                 if (pathElement == nullptr)
                 {

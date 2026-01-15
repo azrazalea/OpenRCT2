@@ -1177,6 +1177,7 @@
     <ClCompile Include="scripting\rpc\HandlerRegistry.cpp" />
     <ClCompile Include="scripting\rpc\RpcUtils.cpp" />
     <ClCompile Include="scripting\rpc\handlers\AgentHandlers.cpp" />
+    <ClCompile Include="scripting\rpc\handlers\AmenityHandlers.cpp" />
     <ClCompile Include="scripting\rpc\handlers\FinanceHandlers.cpp" />
     <ClCompile Include="scripting\rpc\handlers\GuestHandlers.cpp" />
     <ClCompile Include="scripting\rpc\handlers\MapHandlers.cpp" />

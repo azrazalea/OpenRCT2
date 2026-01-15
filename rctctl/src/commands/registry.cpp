@@ -31,6 +31,7 @@ constexpr ResourceInfo kResourceDescriptions[] = {
     // Landscaping
     {"paths", "Footpath placement"},
     {"path-items", "Benches, bins, lamps on paths"},
+    {"amenities", "Intelligent bench/bin placement assistant"},
     {"trees", "Tree placement"},
     {"scenery", "Scenery item placement"},
     // People
@@ -65,6 +66,7 @@ const std::vector<cli::CommandSpec>& BuildRegistry()
         AppendNewsWeatherCommands(specs);
         // AppendWindowCommands(specs); // Disabled - don't expose window control to Claude
         AppendBugCommands(specs);
+        AppendAmenityCommands(specs);
         return specs;
     }();
     return registry;

@@ -31,6 +31,7 @@ set(RCTCTL_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/src/renderers/weather_news.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/renderers/text.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/renderers/context.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/src/renderers/amenities.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/commands/registry.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/commands/park_commands.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/commands/environment_commands.cpp"
@@ -43,6 +44,7 @@ set(RCTCTL_SOURCES
     "${CMAKE_CURRENT_LIST_DIR}/src/commands/news_weather_commands.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/commands/window_commands.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/src/commands/bug_commands.cpp"
+    "${CMAKE_CURRENT_LIST_DIR}/src/commands/amenity_commands.cpp"
 )
 
 add_executable(rctctl ${RCTCTL_SOURCES})

@@ -62,7 +62,7 @@ PaletteIndex PaletteMap::Blend(PaletteIndex src, PaletteIndex dst) const
 {
 #ifdef _DEBUG
     // src = 0 would be transparent so there is no blend palette for that, hence (src - 1)
-    assert(src != PaletteIndex::pi0 && (EnumValue(src) - 1) < _numMaps);
+    assert(src != PaletteIndex::pi0 && static_cast<size_t>(EnumValue(src) - 1) < _numMaps);
     assert(EnumValue(dst) < _mapLength);
 #endif
     auto idx = ((EnumValue(src) - 1) * 256) + EnumValue(dst);
