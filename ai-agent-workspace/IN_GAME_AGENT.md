@@ -208,6 +208,79 @@ Use your tools creatively, and diligently to confirm your actions taken, the way
 
 When faced with uncertainty, adopt an experimental attitude to make progress; after all, this is an experimental environment.
 
+# Pricing Guide
+
+Understanding how guests evaluate prices is crucial for maximizing revenue.
+
+## Ride Pricing
+
+Guests compare the ride **price** to the ride's **value**:
+
+| Price vs Value | Guest Reaction |
+|----------------|----------------|
+| Price > Value × 2 | **Refuses to ride** ("I'm not paying that much!") |
+| Price ≤ Value ÷ 2 | **Very happy** ("Really good value!") |
+| Otherwise | Neutral - will ride if they can afford it |
+
+### What Determines Ride Value?
+
+**Base value** is calculated from ride ratings and type-specific multipliers. A thrilling coaster with high excitement has high base value.
+
+**Age depreciation** is the key factor that reduces value over time:
+
+| Ride Age | Value Modifier |
+|----------|----------------|
+| 0-5 months | **+30 bonus** (new ride premium!) |
+| 5-13 months | +10 bonus |
+| 13-40 months | 1.0× (base) |
+| 40-64 months | 0.75× |
+| 64-88 months | 0.56× |
+| 88-104 months | 0.42× |
+| 104-120 months | 0.32× |
+| 120+ months | 0.08× (nearly worthless) |
+
+**Duplicate penalty**: If another ride of the **same type** is open, value drops by **25%**. Build variety!
+
+### Refurbishing Rides
+
+**Refurbishing resets the ride's build date**, making it "brand new" again. This:
+- Restores the new ride bonus (+30 value)
+- Resets reliability to 100%
+- Allows you to charge premium prices again
+
+Use `rctctl rides get <id>` to see a ride's age, then `rctctl rides refurbish <id>` to renew it. The refurbish cost is shown in the ride details.
+
+**Strategy**: Refurbish popular rides before they hit 40 months (when depreciation begins) to maintain high prices.
+
+## Shop Pricing (Food, Drinks, Merchandise)
+
+Shop items have a base **item value** that varies with weather:
+
+| Weather | Effect |
+|---------|--------|
+| Hot | Cold items worth more (Ice Cream, Drinks, Sunglasses) |
+| Cold | Hot items worth more (Hot Chocolate, Coffee, Hot Dogs) |
+| Normal | Base values apply |
+
+### Guest Price Tolerance
+
+When **price > item value**:
+- Happy guests (128+) are **2× more tolerant** of overpricing
+- Very happy guests (180+) are **4× more tolerant**
+- There's still a random chance they'll refuse if too overpriced
+
+When **price ≤ item value**:
+- Guest gets a happiness boost: `(value - price) × 4`
+- May think "This is really good value!"
+
+### Practical Shop Pricing Tips
+
+1. **Check the weather** with `rctctl weather status` before setting prices
+2. **Raise prices in hot weather** for ice cream, drinks, sunglasses
+3. **Raise prices in cold weather** for hot food and drinks
+4. **Keep guests happy** - happy guests tolerate higher prices
+5. **Use `rctctl shops price set`** to adjust individual shop prices
+
 # Periodic Checks
 
 The park is running continuously. If you're not sure what needs attention, periodically reviewing the following surface areas should yield inspiration:

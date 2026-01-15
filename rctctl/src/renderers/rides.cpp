@@ -354,6 +354,10 @@ void RenderRideStatus(const json& result)
     if (ride.contains("reliabilityPercent"))
     {
         canvas.Section("Maintenance");
+        if (ride.contains("ageLabel"))
+        {
+            canvas.KeyValue("Age", ride.value("ageLabel", std::string("")));
+        }
         canvas.KeyValue("Reliability", std::to_string(ride.value("reliabilityPercent", 0)) + "%");
         canvas.KeyValue("Downtime", std::to_string(ride.value("downtimePercent", 0)) + "%");
         if (ride.contains("inspectionIntervalLabel"))

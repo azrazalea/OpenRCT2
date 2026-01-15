@@ -31,6 +31,7 @@
 #include "../../../actions/TrackPlaceAction.h"
 #include "../../../core/Money.hpp"
 #include "../../../core/Numerics.hpp"
+#include "../../../Date.h"
 #include "../../../entity/EntityList.h"
 #include "../../../entity/Guest.h"
 #include "../../../entity/Staff.h"
@@ -1152,6 +1153,17 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 (ride.lifecycleFlags & (RIDE_LIFECYCLE_BREAKDOWN_PENDING | RIDE_LIFECYCLE_BROKEN_DOWN)) != 0;
             rideJson["mechanicDispatched"] = ride.mechanicStatus != MechanicStatus::undefined;
             rideJson["ageMonths"] = ride.getAge();
+
+            // Age in years with human-readable label
+            auto ageYears = DateGetYear(ride.getAge());
+            rideJson["ageYears"] = ageYears;
+            if (ageYears == 0)
+                rideJson["ageLabel"] = "Built this year";
+            else if (ageYears == 1)
+                rideJson["ageLabel"] = "Built last year";
+            else
+                rideJson["ageLabel"] = "Built " + std::to_string(ageYears) + " years ago";
+
             rideJson["numInversions"] = ride.numInversions;
             rideJson["lifecycleFlags"] = ride.lifecycleFlags;
             rideJson["numPrices"] = ride.getNumPrices();
