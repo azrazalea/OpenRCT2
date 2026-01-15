@@ -518,6 +518,26 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             }
         }
 
+        int32_t GetCampaignPricePerWeek(int32_t type)
+        {
+            if (type >= 0 && type < ADVERTISING_CAMPAIGN_COUNT)
+            {
+                // AdvertisingCampaignPricePerWeek values are in money64 format (10x actual)
+                return static_cast<int32_t>(AdvertisingCampaignPricePerWeek[type] / 10);
+            }
+            return 0;
+        }
+
+        bool CampaignRequiresRide(int32_t type)
+        {
+            return type == ADVERTISING_CAMPAIGN_RIDE || type == ADVERTISING_CAMPAIGN_RIDE_FREE;
+        }
+
+        bool CampaignRequiresItem(int32_t type)
+        {
+            return type == ADVERTISING_CAMPAIGN_FOOD_OR_DRINK_FREE;
+        }
+
         std::optional<int32_t> MarketingCampaignTypeFromString(std::string value)
         {
             auto lowered = ToLower(std::move(value));
@@ -640,6 +660,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 json_t entry = json_t::object();
                 entry["type"] = MarketingCampaignTypeToString(campaign.Type);
                 entry["weeksLeft"] = campaign.WeeksLeft;
+                entry["pricePerWeek"] = GetCampaignPricePerWeek(campaign.Type);
                 entry["target"] = std::string("park");
                 if (campaign.Type == ADVERTISING_CAMPAIGN_RIDE || campaign.Type == ADVERTISING_CAMPAIGN_RIDE_FREE)
                 {
@@ -726,6 +747,20 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             {
                 payload["typeFilter"] = MarketingCampaignTypeToString(*query.typeFilter);
             }
+
+            // Add available campaign types with prices
+            json_t availableTypes = json_t::array();
+            for (int32_t type = 0; type < ADVERTISING_CAMPAIGN_COUNT; ++type)
+            {
+                json_t typeInfo = json_t::object();
+                typeInfo["type"] = MarketingCampaignTypeToString(type);
+                typeInfo["pricePerWeek"] = GetCampaignPricePerWeek(type);
+                typeInfo["requiresRide"] = CampaignRequiresRide(type);
+                typeInfo["requiresItem"] = CampaignRequiresItem(type);
+                availableTypes.push_back(typeInfo);
+            }
+            payload["availableTypes"] = availableTypes;
+
             return payload;
         }
 

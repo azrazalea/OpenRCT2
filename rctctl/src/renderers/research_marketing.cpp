@@ -130,18 +130,48 @@ void RenderResearchStatus(const json& result)
 
 void RenderMarketingStatus(const json& result)
 {
+    TextCanvas canvas(std::cout);
+    canvas.Section("Marketing");
+
+    // Show available campaign types with prices first
+    const auto& availableTypes = result.value("availableTypes", json::array());
+    if (!availableTypes.empty())
+    {
+        canvas.Paragraph("Campaign prices (per week):");
+        TableView priceTable;
+        priceTable.headers = { "Type", "$/week", "Requires" };
+        for (const auto& typeInfo : availableTypes)
+        {
+            std::string requirement = "-";
+            if (typeInfo.value("requiresRide", false))
+            {
+                requirement = "ride";
+            }
+            else if (typeInfo.value("requiresItem", false))
+            {
+                requirement = "shop item";
+            }
+            priceTable.rows.push_back({
+                typeInfo.value("type", std::string("")),
+                "$" + std::to_string(typeInfo.value("pricePerWeek", 0)),
+                requirement
+            });
+        }
+        canvas.Table(priceTable);
+        canvas.Paragraph("");
+    }
+
+    // Show active campaigns
     const auto& active = result.value("active", json::array());
     if (active.empty())
     {
-        TextCanvas canvas(std::cout);
-        canvas.Section("Marketing");
         canvas.Paragraph("No active marketing campaigns.");
         return;
     }
-    TextCanvas canvas(std::cout);
-    canvas.Section("Marketing");
+
+    canvas.Paragraph("Active campaigns:");
     TableView table;
-    table.headers = { "Type", "Target", "Weeks Left" };
+    table.headers = { "Type", "Target", "Weeks Left", "$/week" };
     for (const auto& campaign : active)
     {
         std::string target;
@@ -157,8 +187,12 @@ void RenderMarketingStatus(const json& result)
         {
             target = campaign.value("target", std::string("park"));
         }
-        table.rows.push_back({ campaign.value("type", std::string("campaign")), target,
-            std::to_string(campaign.value("weeksLeft", 0)) });
+        table.rows.push_back({
+            campaign.value("type", std::string("campaign")),
+            target,
+            std::to_string(campaign.value("weeksLeft", 0)),
+            "$" + std::to_string(campaign.value("pricePerWeek", 0))
+        });
     }
     canvas.Table(table);
 }

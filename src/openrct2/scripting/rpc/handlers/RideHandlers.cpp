@@ -1158,6 +1158,12 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             if (ride.getNumPrices() > 1)
                 rideJson["secondaryPrice"] = MoneyToDouble(ride.price[1]);
 
+            // Refurbish cost (half of demolish refund)
+            // RideGetRefundPrice returns negative (money flows to player), so negate for positive display
+            auto refundPrice = RideGetRefundPrice(ride);
+            rideJson["refurbishCost"] = MoneyToDouble(-refundPrice / 2);
+            rideJson["demolishRefund"] = MoneyToDouble(-refundPrice);
+
             // Departure flags
             rideJson["departureFlags"] = ride.departFlags;
             rideJson["waitForLoad"] = (ride.departFlags & RIDE_DEPART_WAIT_FOR_LOAD) != 0;

@@ -125,7 +125,6 @@ void RenderAmenityAuto(const json& result)
     canvas.Paragraph("Placed amenities:");
     canvas.KeyValue("  Benches", counts.value("benches", 0));
     canvas.KeyValue("  Bins", counts.value("bins", 0));
-    canvas.KeyValue("  Bathrooms", counts.value("bathrooms", 0));
 
     // Show successful placements with reasoning
     const auto& placed = result.value("placed", json::array());

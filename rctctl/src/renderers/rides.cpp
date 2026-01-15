@@ -386,6 +386,14 @@ void RenderRideStatus(const json& result)
         canvas.KeyValue("Profit/hr", util::FormatCurrency(profit));
         canvas.KeyValue("Income/hr", util::FormatCurrency(ride.value("incomePerHour", 0.0)));
         canvas.KeyValue("Running cost/hr", util::FormatCurrency(ride.value("runningCost", 0.0)));
+        if (ride.contains("refurbishCost"))
+        {
+            canvas.KeyValue("Refurbish cost", util::FormatCurrency(ride.value("refurbishCost", 0.0)));
+        }
+        if (ride.contains("demolishRefund"))
+        {
+            canvas.KeyValue("Demolish refund", util::FormatCurrency(ride.value("demolishRefund", 0.0)));
+        }
     }
 }
 

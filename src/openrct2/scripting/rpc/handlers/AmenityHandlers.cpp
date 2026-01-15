@@ -18,9 +18,6 @@
 #include "../../../GameState.h"
 #include "../../../actions/FootpathAdditionPlaceAction.h"
 #include "../../../actions/GameActionResult.h"
-#include "../../../actions/RideCreateAction.h"
-#include "../../../actions/RideDemolishAction.h"
-#include "../../../actions/TrackPlaceAction.h"
 #include "../../../core/Money.hpp"
 #include "../../../entity/EntityList.h"
 #include "../../../localisation/Formatting.h"
@@ -75,8 +72,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
         // Default fallback costs (used only if object lookup fails)
         static constexpr int kDefaultBenchCost = 50;
         static constexpr int kDefaultBinCost = 50;
-        static constexpr int kDefaultBathroomCost = 2000;
-        static constexpr int kDefaultFirstAidCost = 3000;
 
         // Get actual price for a path addition from game objects
         money64 GetPathAdditionPrice(const std::string& identifier)
@@ -95,13 +90,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 return 0;
 
             return entry->price;
-        }
-
-        // Get actual build cost for a ride type
-        money64 GetRideBuildCost(ride_type_t rideType)
-        {
-            const auto& rtd = GetRideTypeDescriptor(rideType);
-            return rtd.BuildCosts.TrackPrice;
         }
 
         // Direction offsets for adjacent tile checks (in world coords)
@@ -226,8 +214,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             TileCoordsXYZ location;
             double benchValue = 0.0;
             double binValue = 0.0;
-            double bathroomValue = 0.0;
-            double firstAidValue = 0.0;
             int freeEdgeCount = 0;       // Number of items this path can hold (1-3 typically)
             bool canPlaceBench = true;   // Benches can't go on slopes
             bool canPlaceBin = true;     // Bins CAN go on slopes
@@ -235,19 +221,10 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             std::string primaryReason;  // Why this location scores well
         };
 
-        struct BuildingCandidate
-        {
-            TileCoordsXYZ location;
-            Direction direction;
-            double score;
-            TileCoordsXYZ adjacentPath;
-            std::string reason;
-        };
-
         // Placement plan for a single amenity
         struct PlannedPlacement
         {
-            std::string type;  // "bench", "bin", "bathroom", "firstaid"
+            std::string type;  // "bench" or "bin"
             TileCoordsXYZ location;
             double score;
             std::string reason;
@@ -275,7 +252,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             std::vector<RideExitInfo> nauseousExits;
             std::vector<FoodShopInfo> foodShops;
             std::vector<AmenityHeatValue> heatMap;
-            std::vector<BuildingCandidate> buildingCandidates;
             std::chrono::steady_clock::time_point timestamp;
             bool valid = false;
 
@@ -900,14 +876,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                     }
 
                     // Bins do NOT help with nausea - removed bin scoring from exits
-
-                    // Bathroom/FirstAid value (for future use)
-                    if (pathDist < 20)
-                    {
-                        double facilityContrib = exit.nauseaRating * std::max(0.0, 1.0 - pathDist / 20.0);
-                        heat.bathroomValue += facilityContrib;
-                        heat.firstAidValue += facilityContrib * 1.5;
-                    }
                 }
 
                 // Factor 3: Path distance from food shops
@@ -955,129 +923,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             return heatMap;
         }
 
-        std::vector<BuildingCandidate> FindBuildingCandidates(
-            const std::vector<PathTileAnalysis>& paths,
-            const std::vector<RideExitInfo>& nauseousExits,
-            const std::vector<FoodShopInfo>& foodShops)
-        {
-            std::vector<BuildingCandidate> candidates;
-            std::unordered_set<uint64_t> checkedTiles;
-
-            // Precompute path distances from exits and food shops for scoring
-            std::vector<std::unordered_map<uint64_t, int>> exitDistances;
-            for (const auto& exit : nauseousExits)
-            {
-                exitDistances.push_back(ComputePathDistances(exit.pathLocation, 25));
-            }
-            std::vector<std::unordered_map<uint64_t, int>> foodDistances;
-            for (const auto& shop : foodShops)
-            {
-                foodDistances.push_back(ComputePathDistances(shop.pathLocation, 20));
-            }
-
-            // Direction offsets for building placement (orthogonal only)
-            // kTileDirDeltaX/Y: 0=West, 1=South, 2=East, 3=North
-
-            for (const auto& path : paths)
-            {
-                for (int d = 0; d < 4; d++)
-                {
-                    TileCoordsXYZ candidate{
-                        path.location.x + kTileDirDeltaX[d],
-                        path.location.y + kTileDirDeltaY[d],
-                        path.location.z  // Use adjacent path's Z
-                    };
-                    Direction facing = static_cast<Direction>(d);
-
-                    uint64_t key = MakeTileKey(candidate);
-                    if (checkedTiles.count(key) > 0)
-                        continue;
-                    checkedTiles.insert(key);
-
-                    CoordsXY worldCoords{ candidate.x * 32, candidate.y * 32 };
-                    if (!MapIsLocationValid(worldCoords))
-                        continue;
-
-                    bool canPlace = true;
-
-                    for (auto* element : TileElementsView<TileElement>(worldCoords))
-                    {
-                        if (element == nullptr)
-                            break;
-
-                        auto type = element->GetType();
-                        if (type == TileElementType::Path ||
-                            type == TileElementType::Track ||
-                            type == TileElementType::LargeScenery ||
-                            type == TileElementType::Entrance ||
-                            type == TileElementType::SmallScenery)
-                        {
-                            canPlace = false;
-                            break;
-                        }
-
-                        if (element->IsLastForTile())
-                            break;
-                    }
-
-                    if (!canPlace)
-                        continue;
-
-                    double score = 0.0;
-                    std::string reason;
-
-                    // Use path distance from adjacent path tile for scoring
-                    uint64_t pathKey = MakeTileKey(path.location);
-
-                    for (size_t i = 0; i < nauseousExits.size(); i++)
-                    {
-                        auto it = exitDistances[i].find(pathKey);
-                        if (it != exitDistances[i].end())
-                        {
-                            int pathDist = it->second;
-                            if (pathDist < 20)
-                            {
-                                double contrib = nauseousExits[i].nauseaRating * (20.0 - pathDist) / 20.0;
-                                score += contrib;
-                                if (contrib > 0.3 && reason.empty())
-                                {
-                                    reason = "near " + nauseousExits[i].rideName;
-                                }
-                            }
-                        }
-                    }
-
-                    for (size_t i = 0; i < foodShops.size(); i++)
-                    {
-                        auto it = foodDistances[i].find(pathKey);
-                        if (it != foodDistances[i].end())
-                        {
-                            int pathDist = it->second;
-                            if (pathDist < 15)
-                            {
-                                score += (15.0 - pathDist) / 15.0;
-                            }
-                        }
-                    }
-
-                    candidates.push_back({
-                        candidate,
-                        facing,
-                        score,
-                        path.location,
-                        reason
-                    });
-                }
-            }
-
-            std::sort(candidates.begin(), candidates.end(),
-                [](const BuildingCandidate& a, const BuildingCandidate& b) {
-                    return a.score > b.score;
-                });
-
-            return candidates;
-        }
-
         // =========================================================================
         // Cache Management
         // =========================================================================
@@ -1093,10 +938,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             g_analysisCache.nauseousExits = GetNauseousRideExits();
             g_analysisCache.foodShops = GetFoodShops();
             g_analysisCache.heatMap = CalculateAmenityHeatMap(
-                g_analysisCache.paths,
-                g_analysisCache.nauseousExits,
-                g_analysisCache.foodShops);
-            g_analysisCache.buildingCandidates = FindBuildingCandidates(
                 g_analysisCache.paths,
                 g_analysisCache.nauseousExits,
                 g_analysisCache.foodShops);
@@ -1260,16 +1101,14 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             if (benchCost <= 0) benchCost = ToMoney64FromGBP(kDefaultBenchCost);
             money64 binCost = GetPathAdditionPrice(kBinIdentifier);
             if (binCost <= 0) binCost = ToMoney64FromGBP(kDefaultBinCost);
-            money64 bathroomCost = GetRideBuildCost(RIDE_TYPE_TOILETS);
-            if (bathroomCost <= 0) bathroomCost = ToMoney64FromGBP(kDefaultBathroomCost);
 
             // Convert user's budget to money64 format (multiply by 10)
             money64 budgetMoney = ToMoney64FromGBP(budget);
 
-            // Parse priority (default: benches, bins, bathrooms)
-            std::vector<std::string> priorities = { "benches", "bins", "bathrooms" };
+            // Parse priority (default: benches, bins)
+            std::vector<std::string> priorities = { "benches", "bins" };
             std::vector<std::string> unknownPriorities;
-            static const std::unordered_set<std::string> validPriorities = { "benches", "bins", "bathrooms" };
+            static const std::unordered_set<std::string> validPriorities = { "benches", "bins" };
 
             if (params.contains("priority") && params["priority"].is_array())
             {
@@ -1292,18 +1131,16 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 // Fall back to defaults if all priorities were invalid
                 if (priorities.empty())
                 {
-                    priorities = { "benches", "bins", "bathrooms" };
+                    priorities = { "benches", "bins" };
                 }
             }
 
             // Parse max counts
-            int maxBenches = 50, maxBins = 50, maxBathrooms = 5;
+            int maxBenches = 50, maxBins = 50;
             if (params.contains("maxBenches"))
                 maxBenches = params["maxBenches"].get<int>();
             if (params.contains("maxBins"))
                 maxBins = params["maxBins"].get<int>();
-            if (params.contains("maxBathrooms"))
-                maxBathrooms = params["maxBathrooms"].get<int>();
 
             // Build placement plan
             RecommendationPlan plan;
@@ -1313,7 +1150,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             // Track what we've used
             std::unordered_set<uint64_t> usedTiles;
-            int benchCount = 0, binCount = 0, bathroomCount = 0;
+            int benchCount = 0, binCount = 0;
 
             // Build separate candidate lists based on what can actually be placed
             std::vector<AmenityHeatValue> benchCandidates, binCandidates;
@@ -1552,7 +1389,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             bool placeBenchNext = preferBenches;
 
             while (plan.totalCost < budgetMoney &&
-                   (benchCount < maxBenches || binCount < maxBins || bathroomCount < maxBathrooms))
+                   (benchCount < maxBenches || binCount < maxBins))
             {
                 // Find best candidate for each type
                 double bestBenchScore = -1, bestBinScore = -1;
@@ -1658,29 +1495,10 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 }
             }
 
-            // Handle bathrooms separately (building placement, not path additions)
-            for (const auto& c : cache.buildingCandidates)
-            {
-                if (bathroomCount >= maxBathrooms || plan.totalCost + bathroomCost > budgetMoney)
-                    break;
-
-                PlannedPlacement p;
-                p.type = "bathroom";
-                p.location = c.location;
-                p.score = c.score;
-                p.reason = c.reason.empty() ? "coverage" : c.reason;
-                p.estimatedCost = static_cast<int>(bathroomCost / 10);
-
-                plan.placements.push_back(p);
-                plan.totalCost += bathroomCost;
-                bathroomCount++;
-            }
-
             // Generate plan ID and store
             plan.id = "plan_" + std::to_string(g_nextPlanId++);
             plan.summary = std::to_string(benchCount) + " benches, " +
-                          std::to_string(binCount) + " bins, " +
-                          std::to_string(bathroomCount) + " bathrooms";
+                          std::to_string(binCount) + " bins";
 
             {
                 std::lock_guard<std::mutex> lock(g_cacheMutex);
@@ -1714,7 +1532,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             json_t counts = json_t::object();
             counts["benches"] = benchCount;
             counts["bins"] = binCount;
-            counts["bathrooms"] = bathroomCount;
             payload["counts"] = counts;
 
             // Add warnings for any unknown priorities
@@ -1724,7 +1541,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                 for (const auto& up : unknownPriorities)
                 {
                     warnings.push_back("Unknown priority type ignored: '" + up +
-                        "'. Valid types are: benches, bins, bathrooms");
+                        "'. Valid types are: benches, bins");
                 }
                 payload["warnings"] = warnings;
             }
@@ -1768,7 +1585,7 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
 
             json_t placed = json_t::array();
             json_t failed = json_t::array();
-            int placedBenches = 0, placedBins = 0, placedBathrooms = 0;
+            int placedBenches = 0, placedBins = 0;
             int totalSpent = 0;
 
             for (const auto& p : plan.placements)
@@ -1835,73 +1652,6 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
                         failed.push_back(item);
                     }
                 }
-                else if (p.type == "bathroom")
-                {
-                    auto& gameState = getGameState();
-                    ride_type_t toiletType = RIDE_TYPE_TOILETS;
-                    const auto& rtd = GetRideTypeDescriptor(toiletType);
-
-                    int32_t colour1 = RideGetRandomColourPresetIndex(toiletType);
-                    int32_t colour2 = RideGetUnusedPresetVehicleColour(0);
-
-                    auto rideCreate = GameActions::RideCreateAction(
-                        toiletType, 0, colour1, colour2, gameState.lastEntranceStyle, RideInspection::every10Minutes);
-                    auto createResult = GameActions::Execute(&rideCreate, gameState);
-
-                    if (createResult.error != GameActions::Status::ok)
-                    {
-                        json_t item = json_t::object();
-                        item["type"] = "bathroom";
-                        item["x"] = p.location.x;
-                        item["y"] = p.location.y;
-                        item["error"] = "failed to create ride";
-                        failed.push_back(item);
-                        continue;
-                    }
-
-                    RideId rideId = createResult.getData<RideId>();
-
-                    // Find direction from building candidates
-                    Direction facing = Direction(0);
-                    for (const auto& bc : GetCachedAnalysis().buildingCandidates)
-                    {
-                        if (bc.location.x == p.location.x && bc.location.y == p.location.y)
-                        {
-                            facing = bc.direction;
-                            break;
-                        }
-                    }
-
-                    CoordsXYZD origin{ p.location.x * 32, p.location.y * 32, p.location.z * 8, facing };
-                    SelectedLiftAndInverted liftFlags{};
-                    auto trackAction = GameActions::TrackPlaceAction(
-                        rideId, rtd.StartTrackPiece, toiletType, origin, 0, 0, 0, liftFlags, false);
-                    auto placeResult = GameActions::Execute(&trackAction, gameState);
-
-                    if (placeResult.error != GameActions::Status::ok)
-                    {
-                        auto demolish = GameActions::RideDemolishAction(rideId, GameActions::RideModifyType::demolish);
-                        GameActions::Execute(&demolish, gameState);
-
-                        json_t item = json_t::object();
-                        item["type"] = "bathroom";
-                        item["x"] = p.location.x;
-                        item["y"] = p.location.y;
-                        item["error"] = "failed to place building";
-                        failed.push_back(item);
-                        continue;
-                    }
-
-                    json_t item = json_t::object();
-                    item["type"] = "bathroom";
-                    item["x"] = p.location.x;
-                    item["y"] = p.location.y;
-                    item["reason"] = p.reason;
-                    item["rideId"] = static_cast<int>(rideId.ToUnderlying());
-                    placed.push_back(item);
-                    placedBathrooms++;
-                    totalSpent += p.estimatedCost;  // Use actual cost from plan
-                }
             }
 
             // Invalidate cache since park changed
@@ -1917,13 +1667,11 @@ namespace OpenRCT2::Scripting::Rpc::Handlers
             json_t counts = json_t::object();
             counts["benches"] = placedBenches;
             counts["bins"] = placedBins;
-            counts["bathrooms"] = placedBathrooms;
             payload["counts"] = counts;
 
             // Build summary explanation
             std::string summary = "Placed " + std::to_string(placedBenches) + " benches, " +
-                                 std::to_string(placedBins) + " bins, " +
-                                 std::to_string(placedBathrooms) + " bathrooms. ";
+                                 std::to_string(placedBins) + " bins. ";
             summary += "Spent $" + std::to_string(totalSpent) + " of $" + std::to_string(budget) + " budget.";
             payload["summary"] = summary;
 
